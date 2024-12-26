@@ -10,24 +10,22 @@ export type ClassType = 'morning' | 'evening';
 export interface Member {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  membership?: MembershipType;
-  remaining_classes: number;
-  membership_expiry?: string;
-  extra_check_ins: number;
-  is_new_member: boolean;
-  created_at: string;
-  updated_at: string;
+  email: string;
+  membership: string | null;
+  remaining_classes: number | null;
+  membership_expiry: string | null;
 }
 
 export interface CheckIn {
-  id: string;
-  member_id: string;
+  id: number;
+  member_id: number;
   class_type: ClassType;
-  check_in_date: string;
-  created_at: string;
   is_extra: boolean;
+  created_at: string;
+  check_in_date: string;
+  members?: {
+    name: string;
+  };
 }
 
 export interface ClassSchedule {

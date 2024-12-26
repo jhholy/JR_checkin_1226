@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ErrorBoundary from './utils/errors/ErrorBoundary';
+import LoadingSpinner from './components/common/LoadingSpinner';
 import AppRouter from './components/routing/AppRouter';
+import Header from './components/common/Header';
 
-const App: React.FC = () => {
+function App() {
   return (
     <ErrorBoundary>
-      <AppRouter />
+      <Suspense fallback={<LoadingSpinner />}>
+        <AppRouter />
+      </Suspense>
     </ErrorBoundary>
   );
-};
+}
 
 export default App;

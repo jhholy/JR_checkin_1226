@@ -1,27 +1,28 @@
 import React, { useState } from 'react';
-import { signInAdmin } from '../utils/adminUtils';
 import { Shield } from 'lucide-react';
+import { signInAdmin } from '../utils/adminUtils';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
-interface Props {
-  onSuccess: () => void;
-}
-
-export default function AdminLogin({ onSuccess }: Props) {
+export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { retry } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError(null);
 
     try {
       await signInAdmin(email, password);
-      onSuccess();
+      await retry();
+      navigate('/admin');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : '登录失败，请重试。Login failed, please try again.');
     } finally {
       setLoading(false);
     }

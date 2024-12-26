@@ -57,7 +57,7 @@ export function useCheckIn() {
 
       // Proceed with check-in
       const { data: checkIn, error: checkInError } = await supabase
-        .from('check_ins')
+        .from('checkins')
         .insert([{
           member_id: result.member_id,
           class_type: formData.classType
