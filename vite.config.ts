@@ -1,37 +1,32 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import { resolve } from 'path';
+import path from 'path';
 
 export default defineConfig({
-  plugins: [
-    react(),
-    tsconfigPaths()
-  ],
+  plugins: [react()],
+  server: {
+    port: 3008
+  },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-      '@components': resolve(__dirname, './src/components'),
-      '@hooks': resolve(__dirname, './src/hooks'),
-      '@lib': resolve(__dirname, './src/lib'),
-      '@types': resolve(__dirname, './src/types')
+      '@': path.resolve(__dirname, './src')
     }
   },
-  server: {
-    port: 3007,
-    strictPort: true,
-    host: true,
-    open: true,
-    cors: true,
-    hmr: {
-      overlay: false
-    }
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@supabase/supabase-js',
+      'lucide-react'
+    ],
+    exclude: []
   },
   build: {
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html')
+        main: path.resolve(__dirname, 'index.html')
       }
     }
   }

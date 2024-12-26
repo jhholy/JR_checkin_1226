@@ -1,17 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
-        'muaythai-red': '#D32F2F',
-        'muaythai-blue': '#1976D2',
-        'muaythai-gold': '#FFC107',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
+        'red-600': '#DC2626',
+      }
     },
   },
   plugins: [],
-};
+}
