@@ -1,125 +1,127 @@
-import React, { useState } from 'react';
-import { Download } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { formatDateForDB } from '../../utils/dateUtils';
+import { useState } from 'react';
 import DateRangePicker from '../common/DateRangePicker';
-import ErrorMessage from '../common/ErrorMessage';
+import Button from '../common/Button';
+import { supabase } from '../../lib/supabase';
+import * as XLSX from 'xlsx';
+import { format, startOfDay, endOfDay } from 'date-fns';
+import { Info } from 'lucide-react';
+import { retryWithBackoff } from '../../utils/fetchUtils';
 
 export default function DataExport() {
-  const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState<Date | null>(new Date());
+  const [endDate, setEndDate] = useState<Date | null>(new Date());
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState({
-    startDate: '',
-    endDate: ''
-  });
 
-  const exportData = async () => {
+  const handleExport = async () => {
+    setExporting(true);
     try {
-      setLoading(true);
-      setError(null);
-
-      if (!dateRange.startDate || !dateRange.endDate) {
-        throw new Error('请选择导出日期范围。Please select a date range.');
-      }
-
-      // Fetch check-in records with member details using inner join
-      const { data, error: fetchError } = await supabase
-        .from('check_ins')
+      const { data: records, error } = await supabase
+        .from('checkins')
         .select(`
-          created_at,
-          class_type,
-          is_extra,
-          members!inner (
-            name,
-            email,
-            membership,
-            remaining_classes,
-            membership_expiry
+          *,
+          members (
+            name
           )
         `)
-        .gte('check_in_date', dateRange.startDate)
-        .lte('check_in_date', dateRange.endDate)
-        .order('created_at', { ascending: false });
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
 
-      if (fetchError) throw fetchError;
-      if (!data?.length) {
-        throw new Error('所选日期范围内没有签到记录。No check-in records found in the selected date range.');
-      }
+      if (error) throw error;
 
-      // Format data for CSV
-      const csvData = data.map(record => ({
-        '签到日期': new Date(record.created_at).toLocaleDateString('zh-CN'),
-        '签到时间': new Date(record.created_at).toLocaleTimeString('zh-CN'),
+      const exportData = records.map(record => ({
+        '会员姓名': record.members?.name || '未知会员',
         '课程类型': record.class_type === 'morning' ? '早课' : '晚课',
-        '会员姓名': record.members?.name || '',
-        '会员邮箱': record.members?.email || '',
-        '会员卡类型': record.members?.membership || '',
-        '剩余课时': record.members?.remaining_classes || '',
-        '会员卡到期日': record.members?.membership_expiry ? 
-          new Date(record.members.membership_expiry).toLocaleDateString('zh-CN') : '',
-        '签到状态': record.is_extra ? '额外签到' : '正常签到'
+        '签到时间': format(new Date(record.created_at), 'yyyy-MM-dd HH:mm:ss'),
+        '额外签到': record.is_extra ? '是' : '否'
       }));
 
-      // Convert to CSV with UTF-8 BOM for Excel compatibility
-      const headers = Object.keys(csvData[0]).join(',');
-      const rows = csvData.map(row => 
-        Object.values(row)
-          .map(value => `"${value}"`) // Wrap values in quotes to handle commas
-          .join(',')
-      );
-      const csv = '\ufeff' + [headers, ...rows].join('\n');
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
 
-      // Create download
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      // Format filename with date range
-      const filename = `签到记录_${dateRange.startDate}_${dateRange.endDate}.csv`;
-      link.download = filename;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const wscols = [
+        {wch: 15},
+        {wch: 10},
+        {wch: 20},
+        {wch: 10}
+      ];
+      ws['!cols'] = wscols;
 
-    } catch (err) {
-      console.error('Export failed:', err);
-      setError(err instanceof Error ? err.message : '导出失败，请重试。Export failed, please try again.');
+      XLSX.utils.book_append_sheet(wb, ws, '签到记录');
+
+      const fileName = `签到记录_${format(startDate, 'yyyyMMdd')}_${format(endDate, 'yyyyMMdd')}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('导出失败，请重试');
     } finally {
-      setLoading(false);
+      setExporting(false);
     }
   };
 
+  const handleStartDateChange = (date: Date | null) => {
+    setStartDate(date);
+  };
+
+  const handleEndDateChange = (date: Date | null) => {
+    setEndDate(date);
+  };
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow mb-6">
-      <h2 className="text-lg font-semibold mb-4">导出数据 Export Data</h2>
-      
-      <div className="space-y-4">
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-          <p className="text-sm text-blue-700">
-            导出数据包含：签到日期、时间、课程类型、会员姓名、邮箱、会员卡信息及签到状态
-            <br />
-            Exports include: check-in date, time, class type, member name, email, membership info and check-in status
+    <div className="space-y-4">
+      <div className="p-5 bg-white rounded-lg shadow">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold">导出签到记录</h2>
+        </div>
+
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+          <h3 className="flex items-center text-lg font-semibold text-blue-800 mb-2">
+            <Info className="w-5 h-5 mr-2" />
+            导出说明
+          </h3>
+          
+          <p className="text-sm text-blue-600 leading-relaxed">
+            导出Excel文件（.xlsx）包含：会员姓名、课程类型（早课/晚课）、签到时间、额外签到情况。文件包含表头，建议每次导出时间范围不超过3个月，以确保最佳导出体验。
           </p>
         </div>
 
-        <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-        />
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="flex-grow">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">
+              选择日期范围
+            </h3>
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={handleStartDateChange}
+              onEndDateChange={handleEndDateChange}
+            />
+          </div>
+          
+          <Button
+            variant="blue"
+            onClick={handleExport}
+            loading={exporting}
+            disabled={!startDate || !endDate}
+            className="min-w-[120px]"
+          >
+            {exporting ? '导出中...' : '导出'}
+          </Button>
+        </div>
 
-        {error && <ErrorMessage message={error} />}
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+      </div>
 
-        <button
-          onClick={exportData}
-          disabled={loading || !dateRange.startDate || !dateRange.endDate}
-          className="flex items-center gap-2 px-4 py-2 bg-muaythai-blue text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          <Download className="w-4 h-4" />
-          {loading ? '导出中... Exporting...' : '导出CSV Export CSV'}
-        </button>
+      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <h4 className="font-medium text-yellow-800 mb-1">注意事项：</h4>
+        <ul className="list-disc pl-5 text-sm text-yellow-700">
+          <li>导出过程中请勿关闭页面</li>
+          <li>如导出失败请检查网络后重试</li>
+        </ul>
       </div>
     </div>
   );

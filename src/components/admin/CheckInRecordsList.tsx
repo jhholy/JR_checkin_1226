@@ -155,13 +155,13 @@ export default function CheckInRecordsList() {
         <div className="mt-4 flex justify-end space-x-4">
           <button
             onClick={handleReset}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
           >
             重置 Reset
           </button>
           <button
             onClick={handleFilter}
-            className="px-4 py-2 bg-muaythai-blue text-white rounded-md hover:bg-blue-700"
+            className="group relative flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-muaythai-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-muaythai-blue transition-colors"
           >
             搜索 Search
           </button>
