@@ -11,7 +11,7 @@ BEGIN
         COUNT(*) as total_checkins,
         SUM(CASE WHEN is_extra = true THEN 1 ELSE 0 END) as extra_checkins,
         SUM(CASE WHEN is_extra = false THEN 1 ELSE 0 END) as regular_checkins
-    FROM checkins;
+    FROM check_ins;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -31,7 +31,7 @@ BEGIN
         SUM(CASE WHEN c.is_extra = true THEN 1 ELSE 0 END) as extra_checkins,
         SUM(CASE WHEN c.is_extra = false THEN 1 ELSE 0 END) as regular_checkins
     FROM members m
-    LEFT JOIN checkins c ON m.id = c.member_id
+    LEFT JOIN check_ins c ON m.id = c.member_id
     GROUP BY m.id, m.name
     ORDER BY m.name;
 END;

@@ -39,9 +39,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Required test members to verify
 const REQUIRED_MEMBERS = [
-  { name: '张三', membership: 'single_daily_monthly' },
-  { name: '李四', membership: 'double_daily_monthly' },
-  { name: '王五', membership: 'single_daily_monthly' },
+  { name: '张三', membership: 'single_monthly' },
+  { name: '李四', membership: 'double_monthly' },
+  { name: '王五', membership: 'single_monthly' },
   { name: '赵六', membership: 'ten_classes' },
   { name: '孙七', membership: 'two_classes' },
   { name: '周八', membership: 'single_class' }

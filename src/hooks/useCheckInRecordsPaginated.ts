@@ -30,7 +30,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
   const fetchStats = async (params: FetchRecordsParams) => {
     try {
       let baseQuery = supabase
-        .from('checkins')
+        .from('check_ins')
         .select('id, members!inner(name)', { count: 'exact' });
 
       if (params.memberName) {
@@ -91,7 +91,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
       
       // 获取分页数据
       let query = supabase
-        .from('checkins')
+        .from('check_ins')
         .select(`
           id,
           member_id,

@@ -29,7 +29,7 @@ export function useCheckInRecords(memberId: string, limit: number) {
     try {
       setLoading(true);
       const { data, error: fetchError } = await supabase
-        .from('checkins')
+        .from('check_ins')
         .select('*')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false })

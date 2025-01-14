@@ -3,19 +3,31 @@ import { ParsedRow, ExcelRow } from './types';
 import { validateRow } from './validator';
 import { formatDateForDB } from '../dateUtils';
 
-const EXCEL_HEADERS = [
-  'name',
-  'email',
-  'membership',
-  'remaining_classes',
-  'membership_expiry',
-  'check_in_date',
-  'class_type',
-  'is_extra',
-  'registration_date',
-  'status',
-  'notes'
-];
+// Define membership type mapping (Chinese to English)
+export const MEMBERSHIP_TYPE_MAPPING = {
+  '单次卡': 'single_class',
+  '两次卡': 'two_classes',
+  '十次卡': 'ten_classes',
+  '单次月卡': 'single_monthly',
+  '双次月卡': 'double_monthly'
+} as const;
+
+// Define header mapping (Chinese to English)
+const HEADER_MAPPING = {
+  '姓名': 'name',
+  '邮箱': 'email',
+  '会员卡类型': 'membership',
+  '剩余课时': 'remaining_classes',
+  '到期日期': 'membership_expiry',
+  '签到日期': 'check_in_date',
+  '课程类型': 'class_type',
+  '额外签到': 'is_extra',
+  '注册日期': 'registration_date',
+  '状态': 'status',
+  '备注': 'notes'
+};
+
+const EXCEL_HEADERS = Object.values(HEADER_MAPPING);
 
 export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
   const buffer = await file.arrayBuffer();
@@ -28,12 +40,27 @@ export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
   
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   
-  // Convert sheet to JSON with strict header mapping
-  const rows = utils.sheet_to_json<ExcelRow>(sheet, { 
-    header: EXCEL_HEADERS,
-    range: 1, // Skip header row
-    raw: true, // Get raw values
-    defval: null // Use null for empty cells
+  // Get the raw data first
+  const rawRows = utils.sheet_to_json<Record<string, any>>(sheet, {
+    raw: true,
+    defval: null
+  });
+
+  // Map Chinese headers and values to English
+  const rows = rawRows.map(row => {
+    const mappedRow: Record<string, any> = {};
+    Object.entries(row).forEach(([key, value]) => {
+      const englishKey = HEADER_MAPPING[key as keyof typeof HEADER_MAPPING];
+      if (englishKey) {
+        // Convert membership type from Chinese to English if needed
+        if (englishKey === 'membership' && typeof value === 'string') {
+          mappedRow[englishKey] = MEMBERSHIP_TYPE_MAPPING[value as keyof typeof MEMBERSHIP_TYPE_MAPPING] || value;
+        } else {
+          mappedRow[englishKey] = value;
+        }
+      }
+    });
+    return mappedRow as ExcelRow;
   });
   
   // Filter out empty rows and validate

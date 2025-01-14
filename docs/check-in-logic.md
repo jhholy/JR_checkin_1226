@@ -37,8 +37,8 @@
 
 #### 月卡会员 (Monthly)
 - 检查会员卡是否过期
-- 单日月卡(single_daily_monthly)：每天限1次常规签到
-- 双日月卡(double_daily_monthly)：每天限2次常规签到
+- 单次月卡(single_monthly)：每天限1次常规签到
+- 双次月卡(double_monthly)：每天限2次常规签到
 - 超出限制的签到标记为额外签到
 
 #### 次卡会员 (Class-based)

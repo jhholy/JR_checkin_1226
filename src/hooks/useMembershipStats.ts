@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 import type { MembershipType } from '../types/database';
 
 interface MembershipTypeCounts {
-  single_daily_monthly: number;
-  double_daily_monthly: number;
+  single_monthly: number;
+  double_monthly: number;
   ten_classes: number;
   two_classes: number;
   single_class: number;
@@ -18,8 +18,8 @@ interface MembershipStats {
 export const useMembershipStats = () => {
   const [stats, setStats] = useState<MembershipStats>({
     membershipTypeCounts: {
-      single_daily_monthly: 0,
-      double_daily_monthly: 0,
+      single_monthly: 0,
+      double_monthly: 0,
       ten_classes: 0,
       two_classes: 0,
       single_class: 0,
@@ -64,8 +64,8 @@ export const useMembershipStats = () => {
 
         // 统计各类型会员卡数量
         const counts: MembershipTypeCounts = {
-          single_daily_monthly: 0,
-          double_daily_monthly: 0,
+          single_monthly: 0,
+          double_monthly: 0,
           ten_classes: 0,
           two_classes: 0,
           single_class: 0,

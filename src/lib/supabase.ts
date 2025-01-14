@@ -10,7 +10,7 @@ interface Database {
         Insert: Omit<Member, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<Member, 'id'>>
       }
-      checkins: {
+      check_ins: {
         Row: CheckIn
         Insert: Omit<CheckIn, 'id' | 'created_at'>
         Update: Partial<Omit<CheckIn, 'id'>>

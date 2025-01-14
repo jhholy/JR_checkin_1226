@@ -26,7 +26,7 @@ export async function setupTestData() {
     {
       name: '张三',
       email: 'zhang.san.test.mt@example.com',
-      membership: 'single_daily_monthly',
+      membership: 'single_monthly',
       remaining_classes: 0,
       membership_expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       is_new_member: false
@@ -34,7 +34,7 @@ export async function setupTestData() {
     {
       name: '李四',
       email: 'li.si.test.mt@example.com', 
-      membership: 'double_daily_monthly',
+      membership: 'double_monthly',
       remaining_classes: 0,
       membership_expiry: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
       is_new_member: false
@@ -49,7 +49,7 @@ export async function setupTestData() {
     {
       name: '王小明',
       email: 'wang.xm2.test.mt@example.com',
-      membership: 'single_daily_monthly',
+      membership: 'single_monthly',
       remaining_classes: 0,
       membership_expiry: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
       is_new_member: false

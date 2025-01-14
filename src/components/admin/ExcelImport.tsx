@@ -47,77 +47,103 @@ export default function ExcelImport() {
   };
 
   const downloadSampleData = () => {
+    // Define header mapping
+    const headerMapping = {
+      name: '姓名',
+      email: '邮箱',
+      membership: '会员卡类型',
+      remaining_classes: '剩余课时',
+      membership_expiry: '到期日期'
+    };
+
     const sampleData = [
       {
-        name: '王小明',
-        email: 'wang.xm@example.com',
-        membership: 'ten_classes',
-        remaining_classes: 7,
-        membership_expiry: '2024-04-30'
+        '姓名': '王小明',
+        '邮箱': 'wang.xm@example.com',
+        '会员卡类型': '十次卡',
+        '剩余课时': 7,
+        '到期日期': '2024-04-30'
       },
       {
-        name: 'John Smith',
-        email: 'john.smith@example.com',
-        membership: 'single_monthly',
-        membership_expiry: '2024-04-15'
+        '姓名': 'John Smith',
+        '邮箱': 'john.smith@example.com',
+        '会员卡类型': '单次月卡',
+        '剩余课时': '',
+        '到期日期': '2024-04-15'
       },
       {
-        name: '陈美玲',
-        email: 'chen.ml@example.com',
-        membership: 'two_classes',
-        remaining_classes: 1,
-        membership_expiry: '2024-03-20'
+        '姓名': '陈美玲',
+        '邮箱': 'chen.ml@example.com',
+        '会员卡类型': '两次卡',
+        '剩余课时': 1,
+        '到期日期': '2024-03-20'
       },
       {
-        name: 'Sarah Johnson',
-        email: 'sarah.j@example.com',
-        membership: 'double_monthly',
-        membership_expiry: '2024-05-01'
+        '姓名': 'Sarah Johnson',
+        '邮箱': 'sarah.j@example.com',
+        '会员卡类型': '双次月卡',
+        '剩余课时': '',
+        '到期日期': '2024-05-01'
       },
       {
-        name: '李志强',
-        email: 'li.zq@example.com',
-        membership: 'single_class',
-        remaining_classes: 1,
-        membership_expiry: '2024-02-28'
+        '姓名': '李志强',
+        '邮箱': 'li.zq@example.com',
+        '会员卡类型': '单次卡',
+        '剩余课时': 1,
+        '到期日期': '2024-02-28'
       },
       {
-        name: 'Maria Garcia',
-        email: 'maria.g@example.com',
-        membership: 'ten_classes',
-        remaining_classes: 10,
-        membership_expiry: '2024-06-15'
+        '姓名': 'Maria Garcia',
+        '邮箱': 'maria.g@example.com',
+        '会员卡类型': '十次卡',
+        '剩余课时': 10,
+        '到期日期': '2024-06-15'
       },
       {
-        name: '张伟',
-        email: 'zhang.w@example.com',
-        membership: 'double_monthly',
-        membership_expiry: '2024-03-31'
+        '姓名': '张伟',
+        '邮箱': 'zhang.w@example.com',
+        '会员卡类型': '双次月卡',
+        '剩余课时': '',
+        '到期日期': '2024-03-31'
       },
       {
-        name: 'David Wilson',
-        email: 'david.w@example.com',
-        membership: 'two_classes',
-        remaining_classes: 2,
-        membership_expiry: '2024-04-10'
+        '姓名': 'David Wilson',
+        '邮箱': 'david.w@example.com',
+        '会员卡类型': '两次卡',
+        '剩余课时': 2,
+        '到期日期': '2024-04-10'
       },
       {
-        name: '林小华',
-        email: 'lin.xh@example.com',
-        membership: 'single_monthly',
-        membership_expiry: '2024-05-15'
+        '姓名': '林小华',
+        '邮箱': 'lin.xh@example.com',
+        '会员卡类型': '单次月卡',
+        '剩余课时': '',
+        '到期日期': '2024-05-15'
       },
       {
-        name: 'Emma Brown',
-        email: 'emma.b@example.com',
-        membership: 'ten_classes',
-        remaining_classes: 4,
-        membership_expiry: '2024-04-20'
+        '姓名': 'Emma Brown',
+        '邮箱': 'emma.b@example.com',
+        '会员卡类型': '十次卡',
+        '剩余课时': 4,
+        '到期日期': '2024-04-20'
       }
     ];
 
-    const ws = utils.json_to_sheet(sampleData);
+    // Create workbook and worksheet
     const wb = utils.book_new();
+    const ws = utils.json_to_sheet(sampleData);
+
+    // Add data validation for membership column
+    const membershipTypes = ['单次卡', '两次卡', '十次卡', '单次月卡', '双次月卡'];
+    const validationRange = { s: { r: 1, c: 2 }, e: { r: 10, c: 2 } }; // Column C, rows 2-11
+    ws['!dataValidation'] = [
+      {
+        sqref: utils.encode_range(validationRange),
+        type: 'list',
+        values: membershipTypes
+      }
+    ];
+
     utils.book_append_sheet(wb, ws, 'Members');
     writeFile(wb, 'sample_members_data.xlsx');
   };
@@ -134,7 +160,7 @@ export default function ExcelImport() {
           <ul className="list-disc pl-5 text-sm text-gray-600">
             <li>Names: Chinese characters, English letters, numbers, @._-</li>
             <li>Email: Standard email format</li>
-            <li>Membership types: single_class, two_classes, ten_classes, single_monthly, double_monthly</li>
+            <li>会员卡类型: 单次卡、两次卡、十次卡、单次月卡、双次月卡</li>
           </ul>
         </div>
 

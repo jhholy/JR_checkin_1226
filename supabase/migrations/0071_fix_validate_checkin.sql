@@ -1,4 +1,6 @@
--- Enhanced check-in validation and processing
+-- Fix validate_check_in function to remove circular dependency
+BEGIN;
+
 CREATE OR REPLACE FUNCTION validate_check_in()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -38,8 +40,7 @@ BEGIN
     INTO v_daily_check_ins
     FROM check_ins
     WHERE member_id = NEW.member_id
-      AND check_in_date = CURRENT_DATE
-      AND is_extra = false;
+      AND check_in_date = CURRENT_DATE;
   END IF;
 
   -- Set is_extra based on membership rules
@@ -75,30 +76,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Enhanced check-in processing
-CREATE OR REPLACE FUNCTION process_check_in()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Update member information
-  UPDATE members
-  SET
-    -- Decrement remaining classes for class-based memberships
-    remaining_classes = CASE 
-      WHEN NOT NEW.is_extra 
-        AND membership IN ('single_class', 'two_classes', 'ten_classes') 
-      THEN remaining_classes - 1
-      ELSE remaining_classes
-    END,
-    -- Increment extra check-ins counter
-    extra_check_ins = CASE 
-      WHEN NEW.is_extra 
-      THEN extra_check_ins + 1
-      ELSE extra_check_ins
-    END,
-    -- Always update new member status after check-in
-    is_new_member = false
-  WHERE id = NEW.member_id;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+COMMIT; 

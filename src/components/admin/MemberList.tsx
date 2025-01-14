@@ -120,8 +120,8 @@ export default function MemberList() {
               <option value="single_class">单次卡 Single Class</option>
               <option value="two_classes">两次卡 Two Classes</option>
               <option value="ten_classes">10次卡 Ten Classes</option>
-              <option value="single_daily_monthly">日单月卡 Single Daily Monthly</option>
-              <option value="double_daily_monthly">日多月卡 Double Daily Monthly</option>
+              <option value="single_monthly">单次月卡 Single Monthly</option>
+              <option value="double_monthly">双次月卡 Double Monthly</option>
             </select>
           </div>
 
