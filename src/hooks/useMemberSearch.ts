@@ -87,7 +87,7 @@ export function useMemberSearch(defaultPageSize: number = 10) {
       }
 
       const { data, count, error: fetchError } = await query
-        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .range(start, end);
 
       if (fetchError) throw fetchError;

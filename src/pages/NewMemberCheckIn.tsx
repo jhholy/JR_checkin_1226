@@ -47,7 +47,7 @@ export default function NewMemberCheckIn() {
     <div className="min-h-screen bg-gray-100 py-12 px-4">
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <MuayThaiIcon className="text-5xl mx-auto mb-4" />
+          <MuayThaiIcon />
           <h1 className="text-2xl font-bold mb-2">新会员签到 New Member Check-in</h1>
           <p className="text-gray-600">欢迎来到JR泰拳馆！Welcome to JR Muay Thai!</p>
         </div>

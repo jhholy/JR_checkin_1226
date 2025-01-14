@@ -68,11 +68,11 @@ export default function CheckInRecordsList() {
     return (
       <div className="bg-white p-6 rounded-lg shadow mb-4">
         <p className="text-gray-600 flex items-center space-x-1 text-lg">
-          <span className="font-medium text-muaythai-blue">{memberName}</span>
+          <span className="font-medium text-[#4285F4]">{memberName}</span>
           <span>于</span>
-          <span className="font-medium text-muaythai-blue">{dateRange}</span>
+          <span className="font-medium text-[#4285F4]">{dateRange}</span>
           <span>共签到</span>
-          <span className="font-bold text-muaythai-blue">{stats.total}</span>
+          <span className="font-bold text-[#4285F4]">{stats.total}</span>
           <span>次，其中正常签到</span>
           <span className="font-medium text-green-600">{stats.regular}</span>
           <span>次，额外签到</span>
@@ -87,7 +87,7 @@ export default function CheckInRecordsList() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 rounded-lg shadow">
+      <div className="bg-white p-6 rounded-lg shadow-sm">
         <h3 className="text-lg font-medium mb-4">签到记录查询 Check-in Records</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
@@ -98,7 +98,7 @@ export default function CheckInRecordsList() {
               type="text"
               value={filters.memberName}
               onChange={(e) => setFilters(prev => ({ ...prev, memberName: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
               placeholder="输入会员姓名..."
             />
           </div>
@@ -122,7 +122,7 @@ export default function CheckInRecordsList() {
             <select
               value={filters.classType}
               onChange={(e) => setFilters(prev => ({ ...prev, classType: e.target.value as ClassType | '' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
             >
               <option value="">全部 All</option>
               <option value="morning">早课 Morning</option>
@@ -143,7 +143,7 @@ export default function CheckInRecordsList() {
                   isExtra: value === '' ? undefined : value === 'true'
                 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
             >
               <option value="">全部 All</option>
               <option value="false">正常签到 Regular</option>
@@ -152,16 +152,16 @@ export default function CheckInRecordsList() {
           </div>
         </div>
 
-        <div className="mt-4 flex justify-end space-x-4">
+        <div className="mt-4 flex justify-end gap-2">
           <button
             onClick={handleReset}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
           >
             重置 Reset
           </button>
           <button
             onClick={handleFilter}
-            className="px-4 py-2 bg-muaythai-blue text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             搜索 Search
           </button>
@@ -173,7 +173,7 @@ export default function CheckInRecordsList() {
       ) : records.length > 0 ? (
         <>
           {getStatsSummary()}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -194,7 +194,7 @@ export default function CheckInRecordsList() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {records.map((record) => (
-                    <tr key={record.id}>
+                    <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.members?.name || '未知会员'}
                       </td>
@@ -229,7 +229,7 @@ export default function CheckInRecordsList() {
           />
         </>
       ) : (
-        <div className="bg-white p-4 rounded-lg shadow text-center text-gray-500">
+        <div className="bg-white p-4 rounded-lg shadow-sm text-center text-gray-500">
           暂无签到记录 No check-in records found
         </div>
       )}

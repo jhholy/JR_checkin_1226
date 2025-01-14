@@ -21,32 +21,39 @@ export default function AdminDashboard() {
   if (error) return <NetworkError onRetry={retry} />;
   if (!user) return <AdminLogin onSuccess={() => window.location.reload()} />;
 
+  const tabs = [
+    { id: 'members', label: '会员管理' },
+    { id: 'checkins', label: '签到记录' },
+    { id: 'import', label: '数据导入' },
+    { id: 'export', label: '数据导出' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
-      <nav className="bg-white shadow">
+      <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <Shield className="h-8 w-8 text-muaythai-blue" />
-                <span className="ml-2 text-xl font-bold">管理后台</span>
+          <div className="flex h-16 items-center">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2">
+                <Shield className="h-6 w-6 text-[#4285F4]" />
+                <span className="text-lg font-medium">管理后台</span>
               </div>
-              <div className="ml-6 flex space-x-8">
-                {['members', 'checkins', 'import', 'export'].map((tab) => (
+              <div className="flex gap-8">
+                {tabs.map((tab) => (
                   <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab as ActiveTab)}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      activeTab === tab
-                        ? 'border-muaythai-blue text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as ActiveTab)}
+                    className={`relative py-2 text-sm transition-colors ${
+                      activeTab === tab.id
+                        ? 'text-[#4285F4] font-medium'
+                        : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    {tab === 'members' && '会员管理'}
-                    {tab === 'checkins' && '签到记录'}
-                    {tab === 'import' && '数据导入'}
-                    {tab === 'export' && '数据导出'}
+                    {tab.label}
+                    {activeTab === tab.id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4285F4]" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -55,14 +62,12 @@ export default function AdminDashboard() {
         </div>
       </nav>
 
-      {/* Content */}
-      <main className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {activeTab === 'members' && <MemberList />}
-          {activeTab === 'checkins' && <CheckInRecordsList />}
-          {activeTab === 'import' && <ExcelImport />}
-          {activeTab === 'export' && <DataExport />}
-        </div>
+      {/* Main content */}
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {activeTab === 'members' && <MemberList />}
+        {activeTab === 'checkins' && <CheckInRecordsList />}
+        {activeTab === 'import' && <ExcelImport />}
+        {activeTab === 'export' && <DataExport />}
       </main>
     </div>
   );

@@ -76,7 +76,7 @@ export default function AdminLogin() {
 
           <button
             type="submit"
-            className="w-full bg-muaythai-blue hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors disabled:opacity-50"
+            className="w-full bg-[#4285F4] text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? '登录中... Logging in...' : '登录 Login'}

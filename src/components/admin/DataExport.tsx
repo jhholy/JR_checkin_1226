@@ -93,11 +93,11 @@ export default function DataExport() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow mb-6">
-      <h2 className="text-lg font-semibold mb-4">导出数据 Export Data</h2>
+    <div className="bg-white p-6 rounded-lg shadow-sm">
+      <h2 className="text-lg font-medium mb-4">导出数据 Export Data</h2>
       
       <div className="space-y-4">
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+        <div className="bg-blue-50 border-l-4 border-[#4285F4] p-4 mb-4 rounded-r-lg">
           <p className="text-sm text-blue-700">
             导出数据包含：签到日期、时间、课程类型、会员姓名、邮箱、会员卡信息及签到状态
             <br />
@@ -105,17 +105,24 @@ export default function DataExport() {
           </p>
         </div>
 
-        <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-        />
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            日期范围 Date Range
+          </label>
+          <DateRangePicker
+            startDate={dateRange.startDate}
+            endDate={dateRange.endDate}
+            onStartDateChange={(date) => setDateRange(prev => ({ ...prev, startDate: date || '' }))}
+            onEndDateChange={(date) => setDateRange(prev => ({ ...prev, endDate: date || '' }))}
+          />
+        </div>
 
         {error && <ErrorMessage message={error} />}
 
         <button
           onClick={exportData}
           disabled={loading || !dateRange.startDate || !dateRange.endDate}
-          className="flex items-center gap-2 px-4 py-2 bg-muaythai-blue text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="inline-flex items-center px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-2"
         >
           <Download className="w-4 h-4" />
           {loading ? '导出中... Exporting...' : '导出CSV Export CSV'}

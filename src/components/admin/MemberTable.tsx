@@ -29,31 +29,31 @@ export default function MemberTable({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                会员 Member
+                会员 MEMBER
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                卡类型 Membership
+                卡类型 MEMBERSHIP
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                剩余课时 Classes Left
+                剩余课时 CLASSES LEFT
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                到期日期 Expiry
+                到期日期 EXPIRY
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                操作 Actions
+                操作 ACTIONS
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {members.map(member => (
-              <tr key={member.id}>
+              <tr key={member.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     <div className="text-sm font-medium text-gray-900">
@@ -82,20 +82,20 @@ export default function MemberTable({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <div className="flex space-x-3">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => onEdit(member)}
-                      className="text-muaythai-blue hover:text-blue-700 flex items-center"
+                      className="inline-flex items-center px-3 py-1.5 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors gap-1"
                     >
-                      <Pencil className="w-4 h-4 mr-1" />
-                      编辑 Edit
+                      <Pencil className="w-4 h-4" />
+                      <span>编辑 Edit</span>
                     </button>
                     <button
                       onClick={() => onDelete(member.id)}
-                      className="text-muaythai-red hover:text-red-700 flex items-center"
+                      className="inline-flex items-center px-3 py-1.5 bg-[#EA4335] text-white rounded-lg hover:bg-red-600 transition-colors gap-1"
                     >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      删除 Delete
+                      <Trash2 className="w-4 h-4" />
+                      <span>删除 Delete</span>
                     </button>
                   </div>
                 </td>
@@ -105,29 +105,31 @@ export default function MemberTable({
         </table>
       </div>
 
-      <div className="px-6 py-4 border-t border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            第 {currentPage} 页，共 {totalPages} 页
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
-            >
-              上一页 Prev
-            </button>
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
-            >
-              下一页 Next
-            </button>
+      {totalPages > 1 && (
+        <div className="px-6 py-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              第 {currentPage} 页，共 {totalPages} 页
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded-md text-sm text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                上一页 Prev
+              </button>
+              <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded-md text-sm text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                下一页 Next
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

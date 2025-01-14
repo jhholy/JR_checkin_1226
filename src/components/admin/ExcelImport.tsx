@@ -58,8 +58,61 @@ export default function ExcelImport() {
       {
         name: 'John Smith',
         email: 'john.smith@example.com',
-        membership: 'single_daily_monthly',
+        membership: 'single_monthly',
         membership_expiry: '2024-04-15'
+      },
+      {
+        name: '陈美玲',
+        email: 'chen.ml@example.com',
+        membership: 'two_classes',
+        remaining_classes: 1,
+        membership_expiry: '2024-03-20'
+      },
+      {
+        name: 'Sarah Johnson',
+        email: 'sarah.j@example.com',
+        membership: 'double_monthly',
+        membership_expiry: '2024-05-01'
+      },
+      {
+        name: '李志强',
+        email: 'li.zq@example.com',
+        membership: 'single_class',
+        remaining_classes: 1,
+        membership_expiry: '2024-02-28'
+      },
+      {
+        name: 'Maria Garcia',
+        email: 'maria.g@example.com',
+        membership: 'ten_classes',
+        remaining_classes: 10,
+        membership_expiry: '2024-06-15'
+      },
+      {
+        name: '张伟',
+        email: 'zhang.w@example.com',
+        membership: 'double_monthly',
+        membership_expiry: '2024-03-31'
+      },
+      {
+        name: 'David Wilson',
+        email: 'david.w@example.com',
+        membership: 'two_classes',
+        remaining_classes: 2,
+        membership_expiry: '2024-04-10'
+      },
+      {
+        name: '林小华',
+        email: 'lin.xh@example.com',
+        membership: 'single_monthly',
+        membership_expiry: '2024-05-15'
+      },
+      {
+        name: 'Emma Brown',
+        email: 'emma.b@example.com',
+        membership: 'ten_classes',
+        remaining_classes: 4,
+        membership_expiry: '2024-04-20'
       }
     ];
 
@@ -81,7 +134,7 @@ export default function ExcelImport() {
           <ul className="list-disc pl-5 text-sm text-gray-600">
             <li>Names: Chinese characters, English letters, numbers, @._-</li>
             <li>Email: Standard email format</li>
-            <li>Membership types: single_class, two_classes, ten_classes, etc.</li>
+            <li>Membership types: single_class, two_classes, ten_classes, single_monthly, double_monthly</li>
           </ul>
         </div>
 

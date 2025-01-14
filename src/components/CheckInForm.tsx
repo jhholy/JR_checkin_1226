@@ -90,7 +90,7 @@ export default function CheckInForm({ onSubmit, isNewMember = false, requireEmai
 
       <button
         type="submit"
-        className="w-full bg-muaythai-blue text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+        className="w-full bg-[#4285F4] text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={loading}
       >
         {loading ? '签到中... Checking in...' : '签到 Check-in'}
