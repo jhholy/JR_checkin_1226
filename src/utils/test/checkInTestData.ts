@@ -8,13 +8,13 @@ export const testMembers = [
   {
     name: '王小明',
     email: 'wang.xm2@test.com',
-    membership: 'single_daily_monthly',
+    membership: 'single_monthly',
     membership_expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   },
   {
     name: '测试会员A',
     email: 'member.a@test.com',
-    membership: 'single_daily_monthly',
+    membership: 'single_monthly',
     membership_expiry: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
   },
   {

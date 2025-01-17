@@ -34,11 +34,6 @@ export default function AdminLogin() {
         <div className="text-center mb-8">
           <Shield className="w-12 h-12 text-muaythai-blue mx-auto mb-4" />
           <h1 className="text-2xl font-bold">管理员登录 Admin Login</h1>
-          <p className="text-gray-600 mt-2">
-            默认管理员账号: admin@jrmuaythai.com
-            <br />
-            默认密码: JRMuayThai2024!
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

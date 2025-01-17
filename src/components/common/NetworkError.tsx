@@ -18,7 +18,7 @@ export default function NetworkError({ onRetry }: Props) {
         </p>
         <button
           onClick={onRetry}
-          className="bg-muaythai-blue text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors"
         >
           重试 Retry
         </button>

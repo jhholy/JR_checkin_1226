@@ -47,105 +47,61 @@ export default function ExcelImport() {
   };
 
   const downloadSampleData = () => {
-    // Define header mapping
-    const headerMapping = {
-      name: '姓名',
-      email: '邮箱',
-      membership: '会员卡类型',
-      remaining_classes: '剩余课时',
-      membership_expiry: '到期日期'
-    };
+    // Define headers
+    const headers = [
+      '姓名 Name',
+      '邮箱 Email',
+      '会员卡类型 Membership Type',
+      '剩余课时 Remaining Classes',
+      '到期日期 Expiry Date'
+    ].join(',');
 
+    // Sample data
     const sampleData = [
       {
-        '姓名': '王小明',
-        '邮箱': 'wang.xm@example.com',
-        '会员卡类型': '十次卡',
-        '剩余课时': 7,
-        '到期日期': '2024-04-30'
+        '姓名 Name': '王小明',
+        '邮箱 Email': 'wang.xm@example.com',
+        '会员卡类型 Membership Type': '十次卡',
+        '剩余课时 Remaining Classes': '7',
+        '到期日期 Expiry Date': ''
       },
       {
-        '姓名': 'John Smith',
-        '邮箱': 'john.smith@example.com',
-        '会员卡类型': '单次月卡',
-        '剩余课时': '',
-        '到期日期': '2024-04-15'
+        '姓名 Name': 'John Smith',
+        '邮箱 Email': 'john.smith@example.com',
+        '会员卡类型 Membership Type': '单次月卡',
+        '剩余课时 Remaining Classes': '',
+        '到期日期 Expiry Date': '2024-04-15'
       },
       {
-        '姓名': '陈美玲',
-        '邮箱': 'chen.ml@example.com',
-        '会员卡类型': '两次卡',
-        '剩余课时': 1,
-        '到期日期': '2024-03-20'
-      },
-      {
-        '姓名': 'Sarah Johnson',
-        '邮箱': 'sarah.j@example.com',
-        '会员卡类型': '双次月卡',
-        '剩余课时': '',
-        '到期日期': '2024-05-01'
-      },
-      {
-        '姓名': '李志强',
-        '邮箱': 'li.zq@example.com',
-        '会员卡类型': '单次卡',
-        '剩余课时': 1,
-        '到期日期': '2024-02-28'
-      },
-      {
-        '姓名': 'Maria Garcia',
-        '邮箱': 'maria.g@example.com',
-        '会员卡类型': '十次卡',
-        '剩余课时': 10,
-        '到期日期': '2024-06-15'
-      },
-      {
-        '姓名': '张伟',
-        '邮箱': 'zhang.w@example.com',
-        '会员卡类型': '双次月卡',
-        '剩余课时': '',
-        '到期日期': '2024-03-31'
-      },
-      {
-        '姓名': 'David Wilson',
-        '邮箱': 'david.w@example.com',
-        '会员卡类型': '两次卡',
-        '剩余课时': 2,
-        '到期日期': '2024-04-10'
-      },
-      {
-        '姓名': '林小华',
-        '邮箱': 'lin.xh@example.com',
-        '会员卡类型': '单次月卡',
-        '剩余课时': '',
-        '到期日期': '2024-05-15'
-      },
-      {
-        '姓名': 'Emma Brown',
-        '邮箱': 'emma.b@example.com',
-        '会员卡类型': '十次卡',
-        '剩余课时': 4,
-        '到期日期': '2024-04-20'
+        '姓名 Name': '陈美玲',
+        '邮箱 Email': 'chen.ml@example.com',
+        '会员卡类型 Membership Type': '两次卡',
+        '剩余课时 Remaining Classes': '1',
+        '到期日期 Expiry Date': ''
       }
     ];
 
-    // Create workbook and worksheet
-    const wb = utils.book_new();
-    const ws = utils.json_to_sheet(sampleData);
+    // Convert to CSV
+    const rows = sampleData.map(row => 
+      Object.values(row)
+        .map(value => `"${value}"`) // Wrap values in quotes to handle commas
+        .join(',')
+    );
+    
+    // Add UTF-8 BOM for Excel compatibility
+    const csv = '\ufeff' + [headers, ...rows].join('\n');
 
-    // Add data validation for membership column
-    const membershipTypes = ['单次卡', '两次卡', '十次卡', '单次月卡', '双次月卡'];
-    const validationRange = { s: { r: 1, c: 2 }, e: { r: 10, c: 2 } }; // Column C, rows 2-11
-    ws['!dataValidation'] = [
-      {
-        sqref: utils.encode_range(validationRange),
-        type: 'list',
-        values: membershipTypes
-      }
-    ];
-
-    utils.book_append_sheet(wb, ws, 'Members');
-    writeFile(wb, 'sample_members_data.xlsx');
+    // Create and trigger download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'member_data_template.csv';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -153,15 +109,12 @@ export default function ExcelImport() {
       <h2 className="text-lg font-semibold mb-4">导入数据 Import Data</h2>
       
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            支持的格式 Supported Formats:
-          </label>
-          <ul className="list-disc pl-5 text-sm text-gray-600">
-            <li>Names: Chinese characters, English letters, numbers, @._-</li>
-            <li>Email: Standard email format</li>
-            <li>会员卡类型: 单次卡、两次卡、十次卡、单次月卡、双次月卡</li>
-          </ul>
+        <div className="bg-blue-50 border-l-4 border-[#4285F4] p-4 mb-4 rounded-r-lg">
+          <p className="text-sm text-blue-700">
+            导入数据要求：姓名支持中英文字符、数字、@._-，邮箱需标准格式，会员卡类型包含单次卡、两次卡、十次卡、单次月卡、双次月卡
+            <br />
+            Import requirements: Name supports Chinese/English characters, numbers, @._-, standard email format, membership types include single class, two classes, ten classes, single monthly, double monthly
+          </p>
         </div>
 
         <div className="flex items-center justify-center w-full">
@@ -171,12 +124,12 @@ export default function ExcelImport() {
               <p className="mb-2 text-sm text-gray-500">
                 <span className="font-semibold">点击上传</span> 或拖拽文件
               </p>
-              <p className="text-xs text-gray-500">Excel文件 (.xlsx, .xls)</p>
+              <p className="text-xs text-gray-500">CSV文件 (.csv)</p>
             </div>
             <input
               type="file"
               className="hidden"
-              accept=".xlsx,.xls"
+              accept=".csv"
               onChange={handleFileUpload}
               disabled={importing}
             />

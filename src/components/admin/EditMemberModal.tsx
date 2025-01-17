@@ -180,7 +180,7 @@ export default function EditMemberModal({ member, onClose, onUpdate }: Props) {
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-muaythai-blue text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
             disabled={loading}
           >
             {loading ? '保存中... Saving...' : '保存 Save'}

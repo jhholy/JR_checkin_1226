@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { NewMemberFormData } from '../types/database';
+import { NewMemberFormData, DatabaseError, RegisterResult, Database } from '../types/database';
 import { messages } from '../utils/messageUtils';
 import { validateNewMemberForm } from '../utils/validation/formValidation';
 import { findMemberForCheckIn } from '../utils/member/search';
@@ -16,6 +16,18 @@ interface CheckInResult {
 export function useNewMemberCheckIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleError = (error: DatabaseError) => {
+    console.error('Check-in error:', error);
+    let errorMessage = messages.error;
+    
+    if (error.message) {
+      errorMessage = error.code === 'PGRST202' ? messages.databaseError : error.message;
+    }
+    
+    setError(errorMessage);
+    return errorMessage;
+  };
 
   const submitNewMemberCheckIn = async (formData: NewMemberFormData): Promise<CheckInResult> => {
     try {
@@ -52,7 +64,7 @@ export function useNewMemberCheckIn() {
         console.log('Existing member found');
         return {
           success: false,
-          message: messages.checkIn.memberExists,
+          message: messages.memberExists,
           existingMember: true
         };
       }
@@ -62,7 +74,7 @@ export function useNewMemberCheckIn() {
         console.log('Email verification needed');
         return {
           success: false,
-          message: messages.checkIn.duplicateName,
+          message: messages.duplicateName,
           existingMember: true
         };
       }
@@ -84,7 +96,7 @@ export function useNewMemberCheckIn() {
         if (registerError.message.includes('member_exists')) {
           return {
             success: false,
-            message: messages.checkIn.memberExists,
+            message: messages.memberExists,
             existingMember: true
           };
         }
@@ -95,18 +107,16 @@ export function useNewMemberCheckIn() {
       const result = {
         success: true,
         isExtra: true,
-        message: messages.newMember.success
+        message: messages.newMember
       };
       console.log('Registration successful:', result);
       return result;
 
     } catch (err) {
-      console.error('Check-in error:', err);
-      const message = err instanceof Error ? err.message : messages.checkIn.error;
-      setError(message);
+      const errorMessage = handleError(err as DatabaseError);
       return {
         success: false,
-        message
+        message: errorMessage
       };
     } finally {
       setLoading(false);

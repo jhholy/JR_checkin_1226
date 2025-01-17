@@ -41,15 +41,6 @@ export function useCheckIn() {
       });
 
       // Handle member lookup results
-      if (result.needs_email) {
-        logger.info('需要邮箱验证', { name: formData.name });
-        return {
-          success: false,
-          message: messages.checkIn.duplicateName,
-          isDuplicate: true
-        };
-      }
-
       if (!result.member_id) {
         logger.warn('未找到会员', { 
           name: formData.name,
@@ -58,6 +49,16 @@ export function useCheckIn() {
         return {
           success: false,
           message: messages.checkIn.memberNotFound
+        };
+      }
+
+      // Handle email verification if needed
+      if (result.needs_email) {
+        logger.info('需要邮箱验证', { name: formData.name });
+        return {
+          success: false,
+          message: messages.checkIn.duplicateName,
+          isDuplicate: true
         };
       }
 
@@ -75,7 +76,7 @@ export function useCheckIn() {
           class_type: formData.classType,
           check_in_date: new Date().toISOString().split('T')[0]
         }])
-        .select('is_extra')
+        .select('is_extra, members(is_new_member)')
         .single();
 
       if (checkInError) {
@@ -87,25 +88,36 @@ export function useCheckIn() {
           message: checkInError.message
         });
         
-        if (checkInError.hint === 'duplicate_class') {
+        // Handle duplicate check-in
+        if (checkInError.hint === 'duplicate_checkin' || 
+            checkInError.message?.includes('Already checked in for this class type today')) {
           return {
             success: false,
             message: messages.checkIn.duplicateCheckIn,
             isDuplicate: true
           };
         }
+
         throw checkInError;
+      }
+
+      // Ensure checkIn exists
+      if (!checkIn) {
+        throw new Error('签到记录创建失败');
       }
 
       logger.info('签到成功', { 
         checkIn,
         isExtra: checkIn.is_extra,
+        isNewMember: checkIn.members?.is_new_member,
         member_id: result.member_id
       });
 
+      // Return result based on is_extra flag
       const checkInResult = {
-        success: true,
+        success: true,  // Both normal and extra check-ins are considered successful
         isExtra: checkIn.is_extra,
+        isNewMember: checkIn.members?.is_new_member,
         message: checkIn.is_extra ? messages.checkIn.extraCheckIn : messages.checkIn.success
       };
 

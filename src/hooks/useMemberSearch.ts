@@ -74,15 +74,17 @@ export function useMemberSearch(defaultPageSize: number = 10) {
 
       if (params.expiryStatus) {
         const today = new Date().toISOString();
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        const threeDaysFromNow = new Date();
+        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
 
         if (params.expiryStatus === 'expired') {
-          query = query.lt('membership_expiry', today);
+          query = query.or(
+            `membership_expiry.lt.${today},and(remaining_classes.eq.0,membership.neq.single_monthly,membership.neq.double_monthly)`
+          );
         } else if (params.expiryStatus === 'upcoming') {
-          query = query
-            .gt('membership_expiry', today)
-            .lt('membership_expiry', thirtyDaysFromNow.toISOString());
+          query = query.or(
+            `and(membership_expiry.gt.${today},membership_expiry.lt.${threeDaysFromNow.toISOString()}),and(remaining_classes.lte.2,remaining_classes.gt.0,membership.neq.single_monthly,membership.neq.double_monthly)`
+          );
         }
       }
 
@@ -145,6 +147,45 @@ export function useMemberSearch(defaultPageSize: number = 10) {
     }
   };
 
+  const updateMember = async (memberId: string, updates: Partial<Member>) => {
+    try {
+      setLoading(true);
+
+      // 如果更新包含会员类型变更，自动处理相关字段
+      if (updates.membership) {
+        const isMonthly = updates.membership === 'single_monthly' || updates.membership === 'double_monthly';
+        
+        // 如果改为次卡，清除到期时间
+        if (!isMonthly) {
+          updates.membership_expiry = null;
+        }
+        
+        // 如果改为月卡，清除剩余课时
+        if (isMonthly) {
+          updates.remaining_classes = 0;
+        }
+      }
+
+      const { error } = await supabase
+        .from('members')
+        .update(updates)
+        .eq('id', memberId);
+
+      if (error) throw error;
+      
+      // Clear cache and refresh data
+      memberCache.clear();
+      await searchMembers({ page: result.currentPage });
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Update error:', err);
+      throw new Error('更新失败，请重试。Update failed, please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     searchMembers();
   }, []);
@@ -154,6 +195,7 @@ export function useMemberSearch(defaultPageSize: number = 10) {
     loading,
     error,
     searchMembers,
-    deleteMember
+    deleteMember,
+    updateMember
   };
 }

@@ -3,9 +3,10 @@ import { CheckInFormData, ClassType } from '../types/database';
 import { validateCheckInForm } from '../utils/validation/formValidation';
 import EmailVerification from './member/EmailVerification';
 import CheckInFormFields from './member/CheckInFormFields';
+import { CheckInResult } from '../types/checkIn';
 
 interface Props {
-  onSubmit: (data: CheckInFormData) => Promise<void>;
+  onSubmit: (data: CheckInFormData) => Promise<CheckInResult>;
   isNewMember?: boolean;
   requireEmail?: boolean;
 }
@@ -23,6 +24,9 @@ export default function CheckInForm({ onSubmit, isNewMember = false, requireEmai
   const handleFieldChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
+    if (needsEmailVerification) {
+      setNeedsEmailVerification(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,14 +42,18 @@ export default function CheckInForm({ onSubmit, isNewMember = false, requireEmai
     setLoading(true);
 
     try {
-      await onSubmit(formData);
+      const result = await onSubmit(formData);
+      if (result.isDuplicate) {
+        setError(result.message);
+      } else if (result.needsEmailVerification) {
+        setNeedsEmailVerification(true);
+        setError('');
+      } else if (!result.success) {
+        setError(result.message);
+      }
     } catch (err) {
       if (err instanceof Error) {
-        if (err.message.includes('duplicate_name')) {
-          setNeedsEmailVerification(true);
-        } else {
-          setError(err.message);
-        }
+        setError(err.message);
       } else {
         setError('签到失败，请重试。Check-in failed, please try again.');
       }
@@ -56,7 +64,18 @@ export default function CheckInForm({ onSubmit, isNewMember = false, requireEmai
 
   const handleEmailVerification = async (email: string) => {
     setFormData(prev => ({ ...prev, email }));
-    await onSubmit({ ...formData, email });
+    try {
+      const result = await onSubmit({ ...formData, email });
+      if (!result.success) {
+        setError(result.message);
+        if (result.needsEmailVerification) {
+          setNeedsEmailVerification(true);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '邮箱验证失败，请重试。Email verification failed, please try again.');
+      setNeedsEmailVerification(true);
+    }
   };
 
   if (needsEmailVerification) {
@@ -67,6 +86,7 @@ export default function CheckInForm({ onSubmit, isNewMember = false, requireEmai
         onCancel={() => {
           setNeedsEmailVerification(false);
           setFormData(prev => ({ ...prev, email: '' }));
+          setError('');
         }}
       />
     );
@@ -80,7 +100,6 @@ export default function CheckInForm({ onSubmit, isNewMember = false, requireEmai
         classType={formData.classType}
         loading={loading}
         isNewMember={isNewMember}
-        requireEmail={requireEmail}
         onChange={handleFieldChange}
       />
 
@@ -90,8 +109,11 @@ export default function CheckInForm({ onSubmit, isNewMember = false, requireEmai
 
       <button
         type="submit"
-        className="w-full bg-[#4285F4] text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={loading}
+        className={`w-full py-2 px-4 rounded-lg text-white transition-colors ${
+          loading ? 'bg-gray-400 cursor-not-allowed' : 
+          isNewMember ? 'bg-[#EA4335] hover:bg-red-600' : 'bg-[#4285F4] hover:bg-blue-600'
+        }`}
       >
         {loading ? '签到中... Checking in...' : '签到 Check-in'}
       </button>

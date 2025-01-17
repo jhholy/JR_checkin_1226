@@ -25,6 +25,7 @@ BEGIN
     LIMIT 1;
 
     IF FOUND THEN
+      RAISE NOTICE 'Member already exists: name=%, email=%', p_name, v_existing_member.email;
       RAISE EXCEPTION '该姓名已被注册。This name is already registered.'
         USING HINT = 'member_exists';
     END IF;
@@ -42,6 +43,8 @@ BEGIN
       NOW()
     ) RETURNING id INTO v_member_id;
 
+    RAISE NOTICE 'New member created: id=%, name=%, email=%', v_member_id, p_name, p_email;
+
     -- Create initial check-in
     INSERT INTO check_ins (
       member_id,
@@ -57,6 +60,9 @@ BEGIN
       NOW()
     ) RETURNING id INTO v_check_in_id;
 
+    RAISE NOTICE 'Initial check-in created: id=%, member_id=%, class_type=%', 
+      v_check_in_id, v_member_id, p_class_type;
+
     -- Return success response
     RETURN json_build_object(
       'success', true,
@@ -65,9 +71,11 @@ BEGIN
     );
   EXCEPTION
     WHEN unique_violation THEN
+      RAISE NOTICE 'Unique violation error: name=%, email=%', p_name, p_email;
       RAISE EXCEPTION '该邮箱已被注册。This email is already registered.'
         USING HINT = 'email_exists';
     WHEN OTHERS THEN
+      RAISE NOTICE 'Unexpected error in register_new_member: %', SQLERRM;
       RAISE;
   END;
 END;
@@ -80,4 +88,4 @@ Includes:
 - Name and email validation
 - Duplicate checking
 - Atomic member creation and check-in
-- Proper error handling';
+- Proper error handling and logging';

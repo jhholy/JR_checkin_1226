@@ -182,6 +182,9 @@ export default function CheckInRecordsList() {
                       会员姓名
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      邮箱
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       课程类型
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -197,6 +200,9 @@ export default function CheckInRecordsList() {
                     <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.members?.name || '未知会员'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {record.members?.email || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.class_type === 'morning' ? '早课' : '晚课'}

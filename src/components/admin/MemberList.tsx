@@ -1,5 +1,5 @@
 import React, { useState, FormEvent } from 'react';
-import { Member, MembershipType } from '../../types/database';
+import type { Database } from '../../types/database';
 import MemberTable from './MemberTable';
 import EditMemberModal from './EditMemberModal';
 import { useMemberSearch } from '../../hooks/useMemberSearch';
@@ -7,6 +7,9 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { supabase } from '../../lib/supabase';
 import { Trash2 } from 'lucide-react';
+
+type Member = Database['public']['Tables']['members']['Row'];
+type MembershipType = Database['public']['Enums']['membership_type'];
 
 const PAGE_SIZE = 10;
 
@@ -25,7 +28,8 @@ export default function MemberList() {
     loading, 
     error,
     searchMembers,
-    deleteMember
+    deleteMember,
+    updateMember
   } = useMemberSearch(PAGE_SIZE);
 
   const handleSearch = (page: number = 1) => {
@@ -72,13 +76,8 @@ export default function MemberList() {
 
   const handleUpdate = async (memberId: string, updates: Partial<Member>) => {
     try {
-      const { error } = await supabase
-        .from('members')
-        .update(updates)
-        .eq('id', memberId);
-
-      if (error) throw error;
-      handleSearch(currentPage);
+      await updateMember(memberId, updates);
+      setSelectedMember(null);
     } catch (err) {
       console.error('Failed to update member:', err);
       throw err;
@@ -146,7 +145,7 @@ export default function MemberList() {
             </div>
             <button
               type="submit"
-              className="bg-muaythai-blue text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               搜索 Search
             </button>

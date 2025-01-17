@@ -29,36 +29,47 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
 
   const fetchStats = async (params: FetchRecordsParams) => {
     try {
-      let baseQuery = supabase
-        .from('check_ins')
-        .select('id, members!inner(name)', { count: 'exact' });
+      // 构建基础查询条件
+      const queryFilters = {
+        memberName: params.memberName,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        classType: params.classType
+      };
 
-      if (params.memberName) {
-        baseQuery = baseQuery.ilike('members.name', `%${params.memberName}%`);
-      }
-      if (params.startDate) {
-        baseQuery = baseQuery.gte('check_in_date', params.startDate);
-      }
-      if (params.endDate) {
-        baseQuery = baseQuery.lte('check_in_date', params.endDate);
-      }
-      if (params.classType) {
-        baseQuery = baseQuery.eq('class_type', params.classType);
-      }
+      // 创建新的查询并应用过滤条件
+      const createFilteredQuery = () => {
+        let query = supabase
+          .from('check_ins')
+          .select('id, members!inner(name)', { count: 'exact' });
 
-      // 获取总数
-      const { count: total } = await baseQuery;
+        if (queryFilters.memberName) {
+          query = query.ilike('members.name', `%${queryFilters.memberName}%`);
+        }
+        if (queryFilters.startDate) {
+          query = query.gte('check_in_date', queryFilters.startDate);
+        }
+        if (queryFilters.endDate) {
+          query = query.lte('check_in_date', queryFilters.endDate);
+        }
+        if (queryFilters.classType) {
+          query = query.eq('class_type', queryFilters.classType);
+        }
 
-      // 获取正常签到数
-      const { count: regular } = await baseQuery.eq('is_extra', false);
+        return query;
+      };
 
-      // 获取额外签到数
-      const { count: extra } = await baseQuery.eq('is_extra', true);
+      // 分别获取各类型签到数量
+      const [totalResult, regularResult, extraResult] = await Promise.all([
+        createFilteredQuery(),
+        createFilteredQuery().eq('is_extra', false),
+        createFilteredQuery().eq('is_extra', true)
+      ]);
 
       return {
-        total: total || 0,
-        regular: regular || 0,
-        extra: extra || 0
+        total: totalResult.count || 0,
+        regular: regularResult.count || 0,
+        extra: extraResult.count || 0
       };
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -99,7 +110,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
           is_extra,
           created_at,
           check_in_date,
-          members!inner(name)
+          members!inner(name, email)
         `, {
           count: 'exact'
         });
