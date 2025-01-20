@@ -69,6 +69,7 @@ export default function MemberList() {
     try {
       await deleteMember(memberId);
       setShowDeleteConfirm(null);
+      alert('会员删除成功！\nMember deleted successfully!');
     } catch (err) {
       alert(err instanceof Error ? err.message : '删除失败 Delete failed');
     }

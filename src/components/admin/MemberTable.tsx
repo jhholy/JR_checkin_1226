@@ -1,7 +1,7 @@
 import React from 'react';
 import { Member } from '../../types/database';
 import { formatMembershipType, isMonthlyMembership } from '../../utils/memberUtils';
-import { formatDateTime } from '../../utils/dateUtils';
+import { formatDate } from '../../utils/dateUtils';
 import { Pencil, Trash2 } from 'lucide-react';
 
 interface Props {
@@ -77,7 +77,7 @@ export default function MemberTable({
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="text-sm text-gray-900">
                     {member.membership_expiry 
-                      ? formatDateTime(new Date(member.membership_expiry))
+                      ? formatDate(member.membership_expiry)
                       : '-'}
                   </span>
                 </td>

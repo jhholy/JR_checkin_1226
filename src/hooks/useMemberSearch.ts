@@ -127,12 +127,22 @@ export function useMemberSearch(defaultPageSize: number = 10) {
   const deleteMember = async (memberId: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase
+
+      // 1. 先删除该会员的签到记录
+      const { error: checkInsError } = await supabase
+        .from('check_ins')
+        .delete()
+        .eq('member_id', memberId);
+
+      if (checkInsError) throw checkInsError;
+
+      // 2. 再删除会员本身
+      const { error: memberError } = await supabase
         .from('members')
         .delete()
         .eq('id', memberId);
 
-      if (error) throw error;
+      if (memberError) throw memberError;
       
       // Clear cache and refresh data
       memberCache.clear();
