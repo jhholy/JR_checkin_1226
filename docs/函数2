@@ -1,0 +1,42 @@
+| pg_get_functiondef                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CREATE OR REPLACE FUNCTION public.validate_check_in()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_member RECORD;
+  v_daily_check_ins integer;
+  v_has_same_class_check_in boolean;
+  v_processed boolean;
+BEGIN
+  -- 前面的代码保持不变...
+
+  -- 修改验证完成的日志格式
+  INSERT INTO debug_logs (function_name, member_id, message, details)
+  VALUES (
+    'validate_check_in',
+    NEW.member_id,
+    '验证完成',
+    jsonb_build_object(
+      'check_in_date', NEW.check_in_date,
+      'class_type', NEW.class_type,
+      'is_extra', NEW.is_extra,
+      'membership', v_member.membership,
+      'membership_expiry', v_member.membership_expiry,
+      'daily_check_ins', v_daily_check_ins,
+      'reason', CASE
+        WHEN v_member.membership_expiry < NEW.check_in_date THEN '会员卡已过期'
+        WHEN v_member.membership = 'single_monthly' AND v_daily_check_ins >= 1 THEN '超出单次月卡每日限制'
+        WHEN v_member.membership = 'double_monthly' AND v_daily_check_ins >= 2 THEN '超出双次月卡每日限制'
+        WHEN v_member.membership IN ('single_class', 'two_classes', 'ten_classes') AND v_member.remaining_classes <= 0 THEN '课时已用完'
+        WHEN v_member.membership IS NULL THEN '无有效会员卡'
+        ELSE '正常签到'
+      END
+    )
+  );
+
+  RETURN NEW;
+END;
+$function$
+ |
