@@ -40,32 +40,10 @@ export function validateCheckInForm(name: string, email?: string, requireEmail?:
 }
 
 export function validateNewMemberForm(name: string, email?: string): ValidationResult {
-  if (!name?.trim()) {
-    return {
-      isValid: false,
-      error: messages.validation.nameRequired
-    };
-  }
-
-  if (!validateMemberName(name)) {
-    return {
-      isValid: false,
-      error: messages.validation.invalidName
-    };
-  }
-
-  if (!email?.trim()) {
-    return {
-      isValid: false,
-      error: messages.validation.emailRequiredNewMember
-    };
-  }
-
-  if (!validateEmail(email)) {
-    return {
-      isValid: false,
-      error: messages.validation.invalidEmail
-    };
+  // 新会员必须填写邮箱
+  const result = validateCheckInForm(name, email, true);
+  if (!result.isValid) {
+    return result;
   }
 
   return { isValid: true };

@@ -5,13 +5,11 @@ BEGIN;
 DROP POLICY IF EXISTS "Allow public to register new members" ON members;
 
 -- Create new policy
-CREATE POLICY "Allow public to register new members"
+CREATE POLICY "Allow public to update members"
 ON members
-FOR INSERT
+FOR ALL
 TO public
-WITH CHECK (
-  is_new_member = true 
-  AND membership IS NULL
-);
+USING (true)
+WITH CHECK (true);
 
 COMMIT; 

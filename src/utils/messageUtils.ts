@@ -7,6 +7,13 @@ export const messages = {
     duplicateName: '存在同名会员',
     error: '签到失败'
   },
+  validation: {
+    nameRequired: '请输入姓名',
+    emailRequired: '请输入邮箱',
+    invalidName: '姓名格式不正确',
+    invalidEmail: '邮箱格式不正确',
+    emailRequiredNewMember: '新会员注册需要填写邮箱'
+  },
   memberExists: '会员已存在',
   newMember: '新会员签到成功，请联系管理员办理会员卡',
   error: '操作失败',

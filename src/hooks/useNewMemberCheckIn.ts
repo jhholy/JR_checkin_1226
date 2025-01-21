@@ -19,10 +19,27 @@ export function useNewMemberCheckIn() {
 
   const handleError = (error: DatabaseError) => {
     console.error('Check-in error:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint
+    });
+    
     let errorMessage = messages.error;
     
     if (error.message) {
-      errorMessage = error.code === 'PGRST202' ? messages.databaseError : error.message;
+      if (error.code === 'PGRST202') {
+        errorMessage = messages.databaseError;
+      } else if (error.hint === 'invalid_name') {
+        errorMessage = messages.validation.invalidName;
+      } else if (error.hint === 'member_exists') {
+        errorMessage = messages.memberExists;
+      } else if (error.hint === 'email_exists') {
+        errorMessage = messages.validation.emailExists;
+      } else {
+        errorMessage = error.message;
+      }
     }
     
     setError(errorMessage);
@@ -34,12 +51,16 @@ export function useNewMemberCheckIn() {
       setLoading(true);
       setError(null);
 
-      console.log('Starting new member check-in:', formData);
+      console.log('Starting new member check-in with data:', {
+        name: formData.name,
+        email: formData.email,
+        classType: formData.classType
+      });
 
       // Input validation
       const validation = validateNewMemberForm(formData.name, formData.email);
       if (!validation.isValid) {
-        console.log('Validation failed:', validation.error);
+        console.log('Frontend validation failed:', validation.error);
         throw new Error(validation.error);
       }
 
@@ -61,7 +82,7 @@ export function useNewMemberCheckIn() {
 
       // If member exists, return appropriate message
       if (memberResult.member_id) {
-        console.log('Existing member found');
+        console.log('Existing member found:', memberResult);
         return {
           success: false,
           message: messages.memberExists,
@@ -71,7 +92,7 @@ export function useNewMemberCheckIn() {
 
       // If email verification needed
       if (memberResult.needs_email) {
-        console.log('Email verification needed');
+        console.log('Email verification needed for:', name);
         return {
           success: false,
           message: messages.duplicateName,
@@ -80,8 +101,13 @@ export function useNewMemberCheckIn() {
       }
 
       // Register new member
-      console.log('Registering new member');
-      const { error: registerError } = await supabase.rpc(
+      console.log('Attempting to register new member:', {
+        name,
+        email,
+        classType: formData.classType
+      });
+      
+      const { data, error: registerError } = await supabase.rpc(
         'register_new_member',
         {
           p_name: name,
@@ -91,7 +117,14 @@ export function useNewMemberCheckIn() {
       );
 
       if (registerError) {
-        console.error('Registration error:', registerError);
+        console.error('Registration error:', {
+          error: registerError,
+          code: registerError.code,
+          message: registerError.message,
+          details: registerError.details,
+          hint: registerError.hint
+        });
+        
         // Handle specific error cases
         if (registerError.message.includes('member_exists')) {
           return {
@@ -103,13 +136,15 @@ export function useNewMemberCheckIn() {
         throw registerError;
       }
 
+      console.log('Registration successful, response:', data);
+
       // Return success with welcome message
       const result = {
         success: true,
         isExtra: true,
         message: messages.newMember
       };
-      console.log('Registration successful:', result);
+      console.log('Registration completed:', result);
       return result;
 
     } catch (err) {
