@@ -1,27 +1,27 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Member, MembershipType } from '../types/database';
+// import { Member, MembershipType } from '../types/database';
 import { QueryCache, createCacheKey } from '../utils/cacheUtils';
-import { retryWithBackoff, handleSupabaseError } from '../utils/fetchUtils';
+import { handleSupabaseError } from '../utils/fetchUtils';
 import { normalizeNameForComparison } from '../utils/memberUtils';
 
 interface SearchParams {
   searchTerm?: string;
-  membershipType?: MembershipType | '';
+  membershipType?:  '';
   expiryStatus?: 'upcoming' | 'expired' | '';
   page?: number;
   pageSize?: number;
 }
 
 interface SearchResult {
-  members: Member[];
+  members: any[];
   totalCount: number;
   currentPage: number;
   totalPages: number;
 }
 
 const memberCache = new QueryCache<{
-  members: Member[];
+  members: any[];
   totalCount: number;
 }>();
 
@@ -88,20 +88,25 @@ export function useMemberSearch(defaultPageSize: number = 10) {
         }
       }
 
-      const { data, count, error: fetchError } = await query
+      const { data, error: fetchError } = await query
         .order('id', { ascending: false })
         .range(start, end);
 
       if (fetchError) throw fetchError;
 
-      const totalCount = count || 0;
-      const totalPages = Math.ceil(totalCount / pageSize);
+      // const totalCount = count || 0;
+      // const totalPages = Math.ceil(totalCount / pageSize);
+
+      // if (!params.searchTerm) {
+      //   console.log('searchTerm', params.searchTerm);
+      //   throw new Error('searchTerm is required');
+      // }
 
       // Post-process results to handle case and space insensitive matching
       const filteredData = params.searchTerm
         ? data?.filter(member => 
             normalizeNameForComparison(member.name)
-              .includes(normalizeNameForComparison(params.searchTerm))
+              .includes(normalizeNameForComparison(params.searchTerm!))
           )
         : data;
 
@@ -157,7 +162,7 @@ export function useMemberSearch(defaultPageSize: number = 10) {
     }
   };
 
-  const updateMember = async (memberId: string, updates: Partial<Member>) => {
+  const updateMember = async (memberId: string, updates: Partial<any>) => {
     try {
       setLoading(true);
 
