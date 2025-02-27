@@ -7,7 +7,7 @@ export interface ValidationResult {
   error?: string;
 }
 
-export function validateCheckInForm(name: string, email?: string, requireEmail?: boolean): ValidationResult {
+export function validateCheckInForm(name: string, email: string): ValidationResult {
   if (!name?.trim()) {
     return {
       isValid: false,
@@ -22,14 +22,14 @@ export function validateCheckInForm(name: string, email?: string, requireEmail?:
     };
   }
 
-  if (requireEmail && !email?.trim()) {
+  if (!email?.trim()) {
     return {
       isValid: false,
       error: messages.validation.emailRequired
     };
   }
 
-  if (email?.trim() && !validateEmail(email)) {
+  if (!validateEmail(email)) {
     return {
       isValid: false,
       error: messages.validation.invalidEmail
@@ -39,12 +39,6 @@ export function validateCheckInForm(name: string, email?: string, requireEmail?:
   return { isValid: true };
 }
 
-export function validateNewMemberForm(name: string, email?: string): ValidationResult {
-  // 新会员必须填写邮箱
-  const result = validateCheckInForm(name, email, true);
-  if (!result.isValid) {
-    return result;
-  }
-
-  return { isValid: true };
+export function validateNewMemberForm(name: string, email: string): ValidationResult {
+  return validateCheckInForm(name, email);
 }

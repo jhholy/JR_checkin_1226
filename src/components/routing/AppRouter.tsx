@@ -2,8 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import Home from '../../pages/Home';
-import MemberCheckIn from '../../pages/MemberCheckIn';
-import NewMemberCheckIn from '../../pages/NewMemberCheckIn';
+import GroupClassCheckIn from '../../pages/GroupClassCheckIn';
+import PrivateClassCheckIn from '../../pages/PrivateClassCheckIn';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminLogin from '../AdminLogin';
 import Layout from '../layout/Layout';
@@ -21,8 +21,8 @@ const AppRouter: React.FC = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout showHeader={false}><Home /></Layout>} />
-        <Route path="/member" element={<MemberCheckIn />} />
-        <Route path="/new-member" element={<NewMemberCheckIn />} />
+        <Route path="/group-class" element={<GroupClassCheckIn />} />
+        <Route path="/private-class" element={<PrivateClassCheckIn />} />
         <Route 
           path="/admin" 
           element={

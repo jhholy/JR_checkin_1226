@@ -113,12 +113,16 @@ export function useCheckIn() {
         member_id: result.member_id
       });
 
-      // Return result based on is_extra flag
+      // Return result based on is_extra flag and class type
       const checkInResult = {
         success: true,  // Both normal and extra check-ins are considered successful
         isExtra: checkIn.is_extra,
         isNewMember: checkIn.members?.is_new_member,
-        message: checkIn.is_extra ? messages.checkIn.extraCheckIn : messages.checkIn.success
+        message: checkIn.is_extra 
+          ? (formData.courseType === 'private' 
+             ? messages.checkIn.extraCheckInPrivate 
+             : messages.checkIn.extraCheckInGroup)
+          : messages.checkIn.success
       };
 
       logger.info('签到结果', checkInResult);

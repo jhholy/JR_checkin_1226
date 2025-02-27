@@ -64,5 +64,42 @@ postgresql://postgres.ewjawtisnreuqmzutnnv:[YOUR-PASSWORD]@aws-0-ap-southeast-1.
 - 数据库：PostgreSQL
 - 开发工具：Docker（用于本地开发环境）
 
+## 数据库设计
+
+### 主要表结构
+- members: 会员信息
+  - id: 会员ID
+  - name: 会员姓名
+  - ...
+
+- membership_cards: 会员卡信息
+  - id: 卡ID
+  - member_id: 会员ID
+  - card_type: 课程类型(团课/私教)
+  - coach_type: 教练等级(仅私教课适用)
+  - remaining_group_sessions: 剩余团课课时数(仅团课适用)
+  - remaining_private_sessions: 剩余私教课时数(仅私教课适用)
+  - valid_until: 有效期
+  
+- check_ins: 签到记录
+  - id: 签到ID
+  - member_id: 会员ID
+  - card_id: 使用的会员卡ID
+  - course_type: 课程类型(团课/私教)
+  - private_lesson_type: 私教课类型(1v1/1v2，仅私教课适用)
+  - check_in_time: 签到时间
+  - coach_id: 教练ID
+  
+### 私教课程特性
+- 灵活的上课方式
+  - 同一张私教卡可同时支持1对1和1对2授课
+  - 会员可在每次上课时自由选择授课方式
+  - 系统自动扣减相应类型的课时
+
+- 课时管理
+  - 分别记录1对1和1对2剩余课时
+  - 购买时可设置不同比例的1对1和1对2课时
+  - 支持课时类型的动态调整
+
 ## 作者
 Hongyi Ji (hongyiji224@gmail.com) 

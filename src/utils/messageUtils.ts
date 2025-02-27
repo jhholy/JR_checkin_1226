@@ -1,7 +1,8 @@
 export const messages = {
   checkIn: {
     success: '签到成功',
-    extraCheckIn: '课时已用完，此次为额外签到。请联系管理员购买或续费会员卡。\nYour class credits have been used up. This is an extra check-in. Please contact admin to purchase or renew your membership.',
+    extraCheckInGroup: '您暂无有效的团课卡，已记录为额外签到。\n请及时办理会员卡以享受更好的课程体验。\n\nNo valid group class card found, recorded as extra check-in.\nPlease purchase a membership card for better experience.',
+    extraCheckInPrivate: '您暂无有效的私教卡，已记录为额外签到。\n请及时办理会员卡以享受更好的课程体验。\n\nNo valid private training card found, recorded as extra check-in.\nPlease purchase a membership card for better experience.',
     duplicateCheckIn: '今日已签到此课程',
     memberNotFound: '未找到会员',
     duplicateName: '存在同名会员',
