@@ -11,6 +11,7 @@ interface CheckInResult {
   isExtra?: boolean;
   message: string;
   isDuplicate?: boolean;
+  isNewMember?: boolean;
 }
 
 export function useCheckIn() {
@@ -36,30 +37,50 @@ export function useCheckIn() {
 
       logger.info('会员搜索结果', {
         result,
-        needs_email: result.needs_email,
+        is_new: result.is_new,
         member_id: result.member_id
       });
 
-      // Handle member lookup results
-      if (!result.member_id) {
-        logger.warn('未找到会员', { 
+      // Handle new member registration
+      if (result.is_new) {
+        logger.info('注册新会员', { 
           name: formData.name,
-          searchResult: result 
+          email: formData.email
         });
+
+        const { data: registerResult, error: registerError } = await supabase
+          .rpc('register_new_member', {
+            p_name: formData.name,
+            p_email: formData.email,
+            p_class_type: formData.classType
+          });
+
+        if (registerError) {
+          logger.error('新会员注册失败', { 
+            error: registerError,
+            details: registerError.details,
+            hint: registerError.hint
+          });
+          throw registerError;
+        }
+
+        logger.info('新会员注册成功', registerResult);
+        
         return {
-          success: false,
-          message: messages.checkIn.memberNotFound
+          success: true,
+          isExtra: true,
+          isNewMember: true,
+          message: messages.newMember
         };
       }
 
-      // Handle email verification if needed
-      if (result.needs_email) {
-        logger.info('需要邮箱验证', { name: formData.name });
-        return {
-          success: false,
-          message: messages.checkIn.duplicateName,
-          isDuplicate: true
-        };
+      // Handle existing member check-in
+      if (!result.member_id) {
+        logger.error('会员查找结果异常', { 
+          result,
+          formData 
+        });
+        throw new Error('会员查找结果异常');
       }
 
       // Log check-in attempt

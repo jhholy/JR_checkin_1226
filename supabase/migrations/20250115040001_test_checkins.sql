@@ -100,5 +100,15 @@ BEGIN
     WHERE id = '55555555-5555-5555-5555-555555555555';
     RAISE NOTICE '无卡会员E的额外签到次数: %', v_stats.extra_check_ins;
 
+    -- 10. 测试新会员签到
+    RAISE NOTICE '测试场景10: 新会员签到';
+    INSERT INTO members (id, name, email, is_new_member)
+    VALUES ('88888888-8888-8888-8888-888888888888', '测试新会员H', 'new_member_h@test.com', true);
+
+    INSERT INTO check_ins (member_id, class_type, check_in_date)
+    VALUES ('88888888-8888-8888-8888-888888888888', 'morning', CURRENT_DATE)
+    RETURNING is_extra, card_id INTO v_check_in;
+    RAISE NOTICE '新会员H签到结果: is_extra = %', v_check_in.is_extra;
+
     RAISE NOTICE '测试完成';
 END $$; 
