@@ -1,170 +1,315 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { startOfToday, startOfWeek, startOfMonth, endOfToday, endOfWeek, endOfMonth, format } from 'date-fns';
+import TrainerFilters from './TrainerFilters';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
+import { Trainer } from '../../types/database';
 
-type Trainer = {
-  id: string;
-  name: string;
-  type: 'jr' | 'senior';
-  notes: string | null;
+type TrainerWithStats = Trainer & {
+  stats: {
+    totalPrivateClasses: number;
+    oneOnOneClasses: number;
+    oneOnTwoClasses: number;
+    groupClasses: number;
+  };
 };
 
-type TrainerStats = {
-  totalClasses: number;
-  privateClasses: number;
-  groupClasses: number;
-};
+interface EditingField {
+  trainerId: string;
+  field: 'name' | 'type' | 'totalPrivateClasses' | 'oneOnOneClasses' | 'oneOnTwoClasses' | 'groupClasses' | 'notes';
+  value: string;
+}
 
 export default function TrainerList() {
-  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [trainers, setTrainers] = useState<TrainerWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<Record<string, TrainerStats>>({});
+  const [editingField, setEditingField] = useState<EditingField | null>(null);
+  
+  // 筛选状态
+  const [dateRange, setDateRange] = useState<{
+    start: Date | null;
+    end: Date | null;
+  }>({
+    start: startOfMonth(new Date()),
+    end: endOfToday()
+  });
+  const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchTrainers();
-    fetchTrainerStats();
-  }, []);
-
+  // 获取教练列表和统计数据
   const fetchTrainers = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      
+      // 1. 获取所有教练
+      const { data: trainersData, error: trainersError } = await supabase
         .from('trainers')
         .select('*')
-        .order('name');
+        .ilike('name', `%${searchTerm}%`);
 
-      if (error) throw error;
-      setTrainers(data || []);
+      if (trainersError) throw trainersError;
+
+      // 2. 获取课时统计
+      const statsPromises = trainersData.map(async (trainer) => {
+        // 获取1对1课时
+        const { count: oneOnOneCount } = await supabase
+          .from('check_ins')
+          .select('*', { count: 'exact' })
+          .eq('trainer_id', trainer.id)
+          .eq('is_1v2', false)
+          .gte('check_in_date', format(dateRange.start!, 'yyyy-MM-dd'))
+          .lte('check_in_date', format(dateRange.end!, 'yyyy-MM-dd'));
+
+        // 获取1对2课时
+        const { count: oneOnTwoCount } = await supabase
+          .from('check_ins')
+          .select('*', { count: 'exact' })
+          .eq('trainer_id', trainer.id)
+          .eq('is_1v2', true)
+          .gte('check_in_date', format(dateRange.start!, 'yyyy-MM-dd'))
+          .lte('check_in_date', format(dateRange.end!, 'yyyy-MM-dd'));
+
+        return {
+          ...trainer,
+          stats: {
+            totalPrivateClasses: (oneOnOneCount || 0) + (oneOnTwoCount || 0),
+            oneOnOneClasses: oneOnOneCount || 0,
+            oneOnTwoClasses: oneOnTwoCount || 0,
+            groupClasses: 0 // 暂时保持为0
+          }
+        };
+      });
+
+      const trainersWithStats = await Promise.all(statsPromises);
+      setTrainers(trainersWithStats);
     } catch (err) {
       console.error('Error fetching trainers:', err);
-      setError('获取教练列表失败 Failed to fetch trainers');
+      setError('获取教练数据失败 Failed to fetch trainer data');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchTrainerStats = async () => {
+  // 监听筛选条件变化
+  useEffect(() => {
+    fetchTrainers();
+  }, [dateRange, searchTerm]);
+
+  // 更新教练信息
+  const handleUpdate = async (trainerId: string, field: string, value: string) => {
     try {
-      // 获取今日日期
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const updates: any = { [field]: value };
       
-      // 获取本月第一天
-      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      
-      const { data: checkIns, error } = await supabase
-        .from('check_ins')
-        .select('trainer_id, is_1v2')
-        .gte('created_at', firstDayOfMonth.toISOString());
+      const { error: updateError } = await supabase
+        .from('trainers')
+        .update(updates)
+        .eq('id', trainerId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // 统计每个教练的课程数据
-      const trainerStats: Record<string, TrainerStats> = {};
-      checkIns?.forEach(checkIn => {
-        if (!checkIn.trainer_id) return;
-
-        if (!trainerStats[checkIn.trainer_id]) {
-          trainerStats[checkIn.trainer_id] = {
-            totalClasses: 0,
-            privateClasses: 0,
-            groupClasses: 0
-          };
-        }
-
-        trainerStats[checkIn.trainer_id].totalClasses++;
-        if (checkIn.is_1v2) {
-          // 一对二私教课
-          trainerStats[checkIn.trainer_id].privateClasses++;
-        } else if (checkIn.trainer_id) {
-          // 一对一私教课
-          trainerStats[checkIn.trainer_id].privateClasses++;
-        } else {
-          // 团课
-          trainerStats[checkIn.trainer_id].groupClasses++;
-        }
-      });
-
-      setStats(trainerStats);
+      // 更新本地状态
+      setTrainers(trainers.map(trainer => 
+        trainer.id === trainerId 
+          ? { ...trainer, [field]: value }
+          : trainer
+      ));
+      setEditingField(null);
     } catch (err) {
-      console.error('Error fetching trainer stats:', err);
+      console.error('Error updating trainer:', err);
+      setError('更新失败 Update failed');
     }
+  };
+
+  // 开始编辑
+  const startEditing = (trainer: TrainerWithStats, field: EditingField['field']) => {
+    setEditingField({
+      trainerId: trainer.id,
+      field,
+      value: trainer[field]?.toString() || ''
+    });
+  };
+
+  // 渲染可编辑单元格
+  const renderEditableCell = (trainer: TrainerWithStats, field: EditingField['field'], displayValue: string | React.ReactNode) => {
+    const isEditing = editingField?.trainerId === trainer.id && editingField?.field === field;
+
+    if (isEditing) {
+      if (field === 'type') {
+        return (
+          <div className="flex items-center space-x-2">
+            <select
+              value={editingField.value}
+              onChange={(e) => setEditingField({ ...editingField, value: e.target.value })}
+              className="border rounded px-2 py-1 text-sm"
+              autoFocus
+            >
+              <option value="jr">JR教练</option>
+              <option value="senior">高级教练</option>
+            </select>
+            <button
+              onClick={() => handleUpdate(trainer.id, field, editingField.value)}
+              className="text-green-600 hover:text-green-800"
+            >
+              ✓
+            </button>
+            <button
+              onClick={() => setEditingField(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center space-x-2">
+          <input
+            type="text"
+            value={editingField.value}
+            onChange={(e) => setEditingField({ ...editingField, value: e.target.value })}
+            className="border rounded px-2 py-1 text-sm w-full"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleUpdate(trainer.id, field, editingField.value);
+              } else if (e.key === 'Escape') {
+                setEditingField(null);
+              }
+            }}
+            autoFocus
+          />
+          <button
+            onClick={() => handleUpdate(trainer.id, field, editingField.value)}
+            className="text-green-600 hover:text-green-800"
+          >
+            ✓
+          </button>
+          <button
+            onClick={() => setEditingField(null)}
+            className="text-red-600 hover:text-red-800"
+          >
+            ✕
+          </button>
+        </div>
+      );
+    }
+
+    if (field === 'type') {
+      return (
+        <div
+          className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+          onClick={() => startEditing(trainer, field)}
+        >
+          <span className={`px-2 py-1 rounded-full text-xs ${
+            trainer.type === 'senior' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+          }`}>
+            {trainer.type === 'senior' ? '高级教练' : 'JR教练'}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+        onClick={() => startEditing(trainer, field)}
+      >
+        {displayValue}
+      </div>
+    );
   };
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h3 className="text-lg font-medium mb-4">教练管理 Trainer Management</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  教练姓名 Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  等级 Level
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  本月总课时 Total Classes
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  私教课时 Private Classes
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  团课课时 Group Classes
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  备注 Notes
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {trainers.map(trainer => {
-                const trainerStats = stats[trainer.id] || {
-                  totalClasses: 0,
-                  privateClasses: 0,
-                  groupClasses: 0
-                };
+    <div className="space-y-6">
+      <TrainerFilters
+        dateRange={dateRange}
+        searchTerm={searchTerm}
+        onDateRangeChange={setDateRange}
+        onSearchChange={setSearchTerm}
+        onQuickDateSelect={(period) => {
+          const today = new Date();
+          switch (period) {
+            case 'today':
+              setDateRange({
+                start: startOfToday(),
+                end: endOfToday()
+              });
+              break;
+            case 'week':
+              setDateRange({
+                start: startOfWeek(today, { weekStartsOn: 1 }),
+                end: endOfWeek(today, { weekStartsOn: 1 })
+              });
+              break;
+            case 'month':
+              setDateRange({
+                start: startOfMonth(today),
+                end: endOfToday()
+              });
+              break;
+          }
+        }}
+      />
 
-                return (
-                  <tr key={trainer.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {trainer.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        trainer.type === 'senior'
-                          ? 'bg-purple-100 text-purple-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {trainer.type === 'senior' ? '高级教练' : 'JR教练'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {trainerStats.totalClasses}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {trainerStats.privateClasses}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {trainerStats.groupClasses}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trainer.notes || '-'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                教练姓名 Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                等级 Level
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                总私教课时 Total Private
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                1对1课时
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                1对2课时
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                团课课时 Group
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                备注 Notes
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {trainers.map((trainer) => (
+              <tr key={trainer.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {renderEditableCell(trainer, 'name', trainer.name)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {renderEditableCell(trainer, 'type', trainer.type)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {trainer.stats.totalPrivateClasses}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {trainer.stats.oneOnOneClasses}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {trainer.stats.oneOnTwoClasses}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {trainer.stats.groupClasses}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {renderEditableCell(trainer, 'notes', trainer.notes || '-')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
