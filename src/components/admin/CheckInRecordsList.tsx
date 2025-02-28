@@ -14,6 +14,7 @@ export default function CheckInRecordsList() {
     endDate: '',
     classType: '' as ClassType | '',
     isExtra: undefined as boolean | undefined,
+    isPrivate: undefined as boolean | undefined,
     trainerId: ''
   });
 
@@ -34,6 +35,7 @@ export default function CheckInRecordsList() {
       endDate: filters.endDate || undefined,
       classType: filters.classType || undefined,
       isExtra: filters.isExtra,
+      isPrivate: filters.isPrivate,
       trainerId: filters.trainerId,
       page,
       pageSize: 10
@@ -55,6 +57,7 @@ export default function CheckInRecordsList() {
       endDate: '',
       classType: '',
       isExtra: undefined,
+      isPrivate: undefined,
       trainerId: ''
     });
     handleSearch(1);
@@ -76,11 +79,13 @@ export default function CheckInRecordsList() {
           <span className="font-medium text-[#4285F4]">{dateRange}</span>
           <span>共签到</span>
           <span className="font-bold text-[#4285F4]">{stats.total}</span>
-          <span>次，其中正常签到</span>
+          <span>次，其中</span>
           <span className="font-medium text-green-600">{stats.regular}</span>
-          <span>次，额外签到</span>
+          <span>次正常签到，</span>
           <span className="font-medium text-red-600">{stats.extra}</span>
-          <span>次。</span>
+          <span>次额外签到，</span>
+          <span className="font-medium text-purple-600">{stats.private}</span>
+          <span>次私教课。</span>
         </p>
       </div>
     );
@@ -155,6 +160,27 @@ export default function CheckInRecordsList() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              课程性质 Class Nature
+            </label>
+            <select
+              value={filters.isPrivate === undefined ? '' : filters.isPrivate.toString()}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFilters(prev => ({
+                  ...prev,
+                  isPrivate: value === '' ? undefined : value === 'true'
+                }));
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
+            >
+              <option value="">全部 All</option>
+              <option value="false">团课 Group</option>
+              <option value="true">私教课 Private</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               签到类型 Check-in Type
             </label>
             <select
@@ -211,6 +237,9 @@ export default function CheckInRecordsList() {
                       课程类型
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      课程性质
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       教练
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -232,6 +261,17 @@ export default function CheckInRecordsList() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.class_type === 'morning' ? '早课' : '晚课'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            record.is_private
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {record.is_private ? '私教课' : '团课'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.trainer?.name || '-'}

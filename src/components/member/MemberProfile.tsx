@@ -1,39 +1,107 @@
 import React from 'react';
-import { Member } from '../../types/database';
-import { formatMembershipType } from '../../utils/memberUtils';
-import { formatDateTime } from '../../utils/dateUtils';
+import { Member, MembershipCard } from '../../types/database';
+import { formatDate } from '../../utils/dateUtils';
+import { User, CreditCard, Calendar } from 'lucide-react';
 
 interface Props {
-  member: Member;
+  member: Member & { membership_cards?: MembershipCard[] };
 }
 
 export default function MemberProfile({ member }: Props) {
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4">会员信息 Member Profile</h2>
-      <div className="space-y-3">
-        <div className="flex justify-between">
-          <span className="text-gray-600">姓名 Name:</span>
-          <span className="font-medium">{member.name}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">会员卡 Membership:</span>
-          <span className="font-medium">
-            {member.membership ? formatMembershipType(member.membership) : '无 None'}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">剩余课时 Classes Left:</span>
-          <span className="font-medium">{member.remaining_classes}</span>
-        </div>
-        {member.membership_expiry && (
-          <div className="flex justify-between">
-            <span className="text-gray-600">到期日期 Expiry:</span>
-            <span className="font-medium">
-              {formatDateTime(new Date(member.membership_expiry))}
-            </span>
+  const getCardDetails = (card: MembershipCard) => {
+    let type = '';
+    switch (card.card_subtype) {
+      case 'single_class':
+        type = '团课单次卡';
+        break;
+      case 'two_classes':
+        type = '团课两次卡';
+        break;
+      case 'ten_classes':
+        type = '团课十次卡';
+        break;
+      case 'single_monthly':
+        type = '团课单次月卡';
+        break;
+      case 'double_monthly':
+        type = '团课双次月卡';
+        break;
+      case 'single_private':
+        type = '单次私教卡';
+        break;
+      case 'ten_private':
+        type = '十次私教卡';
+        break;
+      default:
+        type = card.card_subtype;
+    }
+
+    const remaining = card.card_type === 'private' 
+      ? card.remaining_private_sessions 
+      : card.remaining_group_sessions;
+
+    return (
+      <div key={card.id} className="bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <CreditCard className="w-5 h-5 text-[#4285F4]" />
+            <div>
+              <h4 className="font-medium text-gray-900">{type}</h4>
+              {card.valid_until && (
+                <p className="text-sm text-gray-500">
+                  到期日期: {formatDate(card.valid_until)}
+                </p>
+              )}
+            </div>
           </div>
-        )}
+          {remaining !== null && (
+            <div className="text-right">
+              <p className="text-sm text-gray-500">剩余课时</p>
+              <p className={`font-medium ${remaining <= 2 ? 'text-orange-600' : 'text-gray-900'}`}>
+                {remaining}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="space-y-6">
+        {/* 基本信息 */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center space-x-3 mb-4">
+            <User className="w-5 h-5 text-[#4285F4]" />
+            <h3 className="text-lg font-medium">个人信息 Personal Info</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">姓名 Name</p>
+              <p className="font-medium">{member.name}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">邮箱 Email</p>
+              <p className="font-medium">{member.email || '-'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 会员卡信息 */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center space-x-3 mb-4">
+            <Calendar className="w-5 h-5 text-[#4285F4]" />
+            <h3 className="text-lg font-medium">会员卡信息 Membership Cards</h3>
+          </div>
+          <div className="space-y-4">
+            {member.membership_cards?.length ? (
+              member.membership_cards.map(card => getCardDetails(card))
+            ) : (
+              <p className="text-gray-500">暂无会员卡 No membership cards</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

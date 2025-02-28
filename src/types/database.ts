@@ -34,149 +34,210 @@ export type Database = {
   }
   public: {
     Tables: {
-      check_ins: {
-        Row: {
-          check_in_date: string
-          check_in_time: string | null
-          class_type: Database["public"]["Enums"]["class_type"]
-          created_at: string | null
-          id: string
-          is_extra: boolean | null
-          member_id: string | null
-        }
-        Insert: {
-          check_in_date?: string
-          check_in_time?: string | null
-          class_type: Database["public"]["Enums"]["class_type"]
-          created_at?: string | null
-          id?: string
-          is_extra?: boolean | null
-          member_id?: string | null
-        }
-        Update: {
-          check_in_date?: string
-          check_in_time?: string | null
-          class_type?: Database["public"]["Enums"]["class_type"]
-          created_at?: string | null
-          id?: string
-          is_extra?: boolean | null
-          member_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "check_ins_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      class_schedule: {
-        Row: {
-          class_type: Database["public"]["Enums"]["class_type"]
-          created_at: string | null
-          day_of_week: number
-          end_time: string
-          id: string
-          start_time: string
-          updated_at: string | null
-        }
-        Insert: {
-          class_type: Database["public"]["Enums"]["class_type"]
-          created_at?: string | null
-          day_of_week: number
-          end_time: string
-          id?: string
-          start_time: string
-          updated_at?: string | null
-        }
-        Update: {
-          class_type?: Database["public"]["Enums"]["class_type"]
-          created_at?: string | null
-          day_of_week?: number
-          end_time?: string
-          id?: string
-          start_time?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      debug_logs: {
-        Row: {
-          details: Json | null
-          function_name: string
-          id: number
-          member_id: string | null
-          message: string
-          timestamp: string | null
-        }
-        Insert: {
-          details?: Json | null
-          function_name: string
-          id?: number
-          member_id?: string | null
-          message: string
-          timestamp?: string | null
-        }
-        Update: {
-          details?: Json | null
-          function_name?: string
-          id?: number
-          member_id?: string | null
-          message?: string
-          timestamp?: string | null
-        }
-        Relationships: []
-      }
       members: {
         Row: {
-          created_at: string | null
-          daily_check_ins: number | null
-          email: string | null
-          extra_check_ins: number
-          id: string
-          is_new_member: boolean | null
-          last_check_in_date: string | null
-          membership: Database["public"]["Enums"]["membership_type"] | null
-          membership_expiry: string | null
-          name: string
-          phone: string | null
-          remaining_classes: number | null
-          updated_at: string | null
-        }
+          id: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          last_check_in_date: string | null;
+          extra_check_ins: number;
+          is_new_member: boolean;
+        };
         Insert: {
-          created_at?: string | null
-          daily_check_ins?: number | null
-          email?: string | null
-          extra_check_ins?: number
-          id?: string
-          is_new_member?: boolean | null
-          last_check_in_date?: string | null
-          membership?: Database["public"]["Enums"]["membership_type"] | null
-          membership_expiry?: string | null
-          name: string
-          phone?: string | null
-          remaining_classes?: number | null
-          updated_at?: string | null
-        }
+          id?: string;
+          name: string;
+          email?: string | null;
+          phone?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          last_check_in_date?: string | null;
+          extra_check_ins?: number;
+          is_new_member?: boolean;
+        };
         Update: {
-          created_at?: string | null
-          daily_check_ins?: number | null
-          email?: string | null
-          extra_check_ins?: number
-          id?: string
-          is_new_member?: boolean | null
-          last_check_in_date?: string | null
-          membership?: Database["public"]["Enums"]["membership_type"] | null
-          membership_expiry?: string | null
-          name?: string
-          phone?: string | null
-          remaining_classes?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+          id?: string;
+          name?: string;
+          email?: string | null;
+          phone?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          last_check_in_date?: string | null;
+          extra_check_ins?: number;
+          is_new_member?: boolean;
+        };
+        Relationships: [];
+      };
+      membership_cards: {
+        Row: {
+          id: string;
+          member_id: string;
+          card_type: string;
+          card_category: string | null;
+          card_subtype: string;
+          trainer_type: string | null;
+          remaining_group_sessions: number | null;
+          remaining_private_sessions: number | null;
+          valid_until: string | null;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          card_type: string;
+          card_category?: string | null;
+          card_subtype: string;
+          trainer_type?: string | null;
+          remaining_group_sessions?: number | null;
+          remaining_private_sessions?: number | null;
+          valid_until?: string | null;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          member_id?: string;
+          card_type?: string;
+          card_category?: string | null;
+          card_subtype?: string;
+          trainer_type?: string | null;
+          remaining_group_sessions?: number | null;
+          remaining_private_sessions?: number | null;
+          valid_until?: string | null;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "membership_cards_member_id_fkey";
+            columns: ["member_id"];
+            isOneToOne: false;
+            referencedRelation: "members";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      check_ins: {
+        Row: {
+          id: string;
+          member_id: string;
+          card_id: string | null;
+          trainer_id: string | null;
+          class_type: ClassType;
+          check_in_time: string;
+          check_in_date: string;
+          is_extra: boolean;
+          is_private: boolean;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          card_id?: string | null;
+          trainer_id?: string | null;
+          class_type: ClassType;
+          check_in_time?: string;
+          check_in_date: string;
+          is_extra?: boolean;
+          is_private?: boolean;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          member_id?: string;
+          card_id?: string | null;
+          trainer_id?: string | null;
+          class_type?: ClassType;
+          check_in_time?: string;
+          check_in_date?: string;
+          is_extra?: boolean;
+          is_private?: boolean;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_member_id_fkey";
+            columns: ["member_id"];
+            isOneToOne: false;
+            referencedRelation: "members";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "check_ins_card_id_fkey";
+            columns: ["card_id"];
+            isOneToOne: false;
+            referencedRelation: "membership_cards";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "check_ins_trainer_id_fkey";
+            columns: ["trainer_id"];
+            isOneToOne: false;
+            referencedRelation: "trainers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      trainers: {
+        Row: {
+          id: string;
+          name: string;
+          type: TrainerType;
+          notes: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          type: TrainerType;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          type?: TrainerType;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      class_schedule: {
+        Row: {
+          id: string;
+          class_type: ClassType;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          class_type: ClassType;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          class_type?: ClassType;
+          day_of_week?: number;
+          start_time?: string;
+          end_time?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
     }
     Views: {
       [_ in never]: never
@@ -184,71 +245,58 @@ export type Database = {
     Functions: {
       create_new_member: {
         Args: {
-          p_name: string
-          p_email: string
-          p_class_type: Database["public"]["Enums"]["class_type"]
-        }
-        Returns: Json
-      }
+          p_name: string;
+          p_email: string;
+          p_class_type: ClassType;
+        };
+        Returns: Json;
+      };
       find_member_for_checkin: {
         Args: {
-          p_name: string
-          p_email?: string
-        }
+          p_name: string;
+          p_email?: string;
+        };
         Returns: {
-          member_id: string
-          is_new: boolean
-          needs_email: boolean
-        }[]
-      }
-      merge_new_members: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      register_new_member: {
-        Args: {
-          p_name: string
-          p_email: string
-          p_class_type: Database["public"]["Enums"]["class_type"]
-        }
-        Returns: Json
-      }
+          member_id: string;
+          is_new: boolean;
+          needs_email: boolean;
+        }[];
+      };
       search_members: {
         Args: {
-          search_query: string
-        }
-        Returns: {
-          id: string
-          name: string
-          email: string
-          phone: string
-          membership: Database["public"]["Enums"]["membership_type"]
-          remaining_classes: number
-          membership_expiry: string
-          extra_check_ins: number
-          is_new_member: boolean
-          created_at: string
-          updated_at: string
-          daily_check_ins: number
-          last_check_in_date: string
-        }[]
-      }
+          search_query: string;
+        };
+        Returns: Member[];
+      };
       validate_member_name: {
         Args: {
-          p_name: string
-          p_email?: string
-        }
-        Returns: boolean
-      }
+          p_name: string;
+          p_email?: string;
+        };
+        Returns: boolean;
+      };
     }
     Enums: {
-      class_type: "morning" | "evening"
+      class_type: "morning" | "evening";
       membership_type:
-        | "single_class"
-        | "two_classes"
-        | "ten_classes"
-        | "single_monthly"
-        | "double_monthly"
+        | "single_class" 
+        | "two_classes" 
+        | "ten_classes" 
+        | "single_monthly" 
+        | "double_monthly";
+      
+      ClassType: "morning" | "evening";
+      CardType: "class" | "monthly" | "private";
+      CardCategory: "group" | "private";
+      CardSubtype: 
+        | "single_class" 
+        | "two_classes" 
+        | "ten_classes" 
+        | "single_monthly" 
+        | "double_monthly" 
+        | "single_private" 
+        | "ten_private";
+      TrainerType: "jr" | "senior";
     }
     CompositeTypes: {
       [_ in never]: never
@@ -376,4 +424,30 @@ export interface RegisterResult {
     success: boolean;
     message: string;
 }
+
+export type Member = Database['public']['Tables']['members']['Row'];
+export type MembershipType = Database['public']['Enums']['membership_type'];
+
+export interface MembershipCard {
+  id: string;
+  member_id: string;
+  card_type: string;
+  card_category?: string;
+  card_subtype: string;
+  trainer_type?: string;
+  remaining_group_sessions?: number;
+  remaining_private_sessions?: number;
+  valid_until: string | null;
+  created_at: string;
+}
+
+export type CheckIn = Database['public']['Tables']['check_ins']['Row'];
+export type Trainer = Database['public']['Tables']['trainers']['Row'];
+export type ClassSchedule = Database['public']['Tables']['class_schedule']['Row'];
+
+export type ClassType = Database['public']['Enums']['ClassType'];
+export type CardType = Database['public']['Enums']['CardType'];
+export type CardCategory = Database['public']['Enums']['CardCategory'];
+export type CardSubtype = Database['public']['Enums']['CardSubtype'];
+export type TrainerType = Database['public']['Enums']['TrainerType'];
 

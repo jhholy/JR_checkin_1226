@@ -1,11 +1,10 @@
 import React from 'react';
-import { Member } from '../../types/database';
-import { formatMembershipType, isMonthlyMembership } from '../../utils/memberUtils';
+import { Member, MembershipCard } from '../../types/database';
 import { formatDate, isWithinDays, isPast } from '../../utils/dateUtils';
 import { Pencil, Trash2, AlertCircle } from 'lucide-react';
 
 interface Props {
-  members: Member[];
+  members: (Member & { membership_cards?: MembershipCard[] })[];
   onEdit: (member: Member) => void;
   onDelete: (memberId: string) => void;
   currentPage: number;
@@ -21,14 +20,23 @@ export default function MemberTable({
   totalPages,
   onPageChange 
 }: Props) {
-  const getMembershipStatus = (member: Member) => {
-    if (!member.membership) return null;
+  const getMembershipStatus = (member: Member & { membership_cards?: MembershipCard[] }) => {
+    if (!member.membership_cards?.length) return null;
 
-    const isExpiringSoon = member.membership_expiry && isWithinDays(new Date(member.membership_expiry), 7);
-    const isExpired = member.membership_expiry && isPast(new Date(member.membership_expiry));
-    const hasLowClasses = !isMonthlyMembership(member.membership) && (member.remaining_classes || 0) <= 2;
+    // 检查所有会员卡的状态
+    const hasExpiredCard = member.membership_cards.some(card => 
+      card.valid_until && isPast(new Date(card.valid_until))
+    );
+    
+    const hasExpiringSoonCard = member.membership_cards.some(card =>
+      card.valid_until && isWithinDays(new Date(card.valid_until), 7)
+    );
 
-    if (isExpired) {
+    const hasLowClasses = member.membership_cards.some(card =>
+      card.card_type === 'class' && (card.remaining_group_sessions || 0) <= 2
+    );
+
+    if (hasExpiredCard) {
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
           <AlertCircle className="w-3 h-3 mr-1" />
@@ -37,7 +45,7 @@ export default function MemberTable({
       );
     }
 
-    if (isExpiringSoon) {
+    if (hasExpiringSoonCard) {
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
           <AlertCircle className="w-3 h-3 mr-1" />
@@ -58,16 +66,82 @@ export default function MemberTable({
     return null;
   };
 
-  const getRemainingClasses = (member: Member) => {
-    if (isMonthlyMembership(member.membership)) {
-      return 'N/A';
-    }
-    const remaining = member.remaining_classes || 0;
-    return (
-      <span className={`${remaining <= 2 ? 'text-orange-600 font-medium' : ''}`}>
-        {remaining}
-      </span>
+  const getCardTypes = (member: Member & { membership_cards?: MembershipCard[] }) => {
+    if (!member.membership_cards?.length) return '-';
+    
+    return member.membership_cards.map(card => {
+      let type = '';
+      switch (card.card_subtype) {
+        case 'single_class':
+          type = '团课单次卡';
+          break;
+        case 'two_classes':
+          type = '团课两次卡';
+          break;
+        case 'ten_classes':
+          type = '团课十次卡';
+          break;
+        case 'single_monthly':
+          type = '团课单次月卡';
+          break;
+        case 'double_monthly':
+          type = '团课双次月卡';
+          break;
+        case 'single_private':
+          type = '单次私教卡';
+          break;
+        case 'ten_private':
+          type = '十次私教卡';
+          break;
+        default:
+          type = card.card_subtype;
+      }
+      return type;
+    }).join(', ');
+  };
+
+  const getRemainingClasses = (member: Member & { membership_cards?: MembershipCard[] }) => {
+    if (!member.membership_cards?.length) return '-';
+
+    const classCards = member.membership_cards.filter(card => 
+      card.card_type === 'class' || card.card_type === 'private'
     );
+
+    if (!classCards.length) return 'N/A';
+
+    return classCards.map(card => {
+      const remaining = card.card_type === 'private' 
+        ? card.remaining_private_sessions 
+        : card.remaining_group_sessions;
+      
+      return (
+        <span 
+          key={card.id}
+          className={`${(remaining || 0) <= 2 ? 'text-orange-600 font-medium' : ''}`}
+        >
+          {card.card_type === 'private' ? '私教:' : '团课:'} {remaining || 0}
+        </span>
+      );
+    }).reduce((prev, curr) => [prev, ', ', curr]);
+  };
+
+  const getExpiryDate = (member: Member & { membership_cards?: MembershipCard[] }) => {
+    if (!member.membership_cards?.length) return '-';
+
+    return member.membership_cards
+      .filter(card => card.valid_until)
+      .map(card => (
+        <span
+          key={card.id}
+          className={`block ${
+            isWithinDays(new Date(card.valid_until!), 7)
+              ? 'text-yellow-600 font-medium'
+              : 'text-gray-900'
+          }`}
+        >
+          {formatDate(card.valid_until!)}
+        </span>
+      ));
   };
 
   return (
@@ -111,7 +185,7 @@ export default function MemberTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="text-sm text-gray-900">
-                    {member.membership ? formatMembershipType(member.membership) : '-'}
+                    {getCardTypes(member)}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -120,15 +194,7 @@ export default function MemberTable({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`text-sm ${
-                    member.membership_expiry && isWithinDays(new Date(member.membership_expiry), 7)
-                      ? 'text-yellow-600 font-medium'
-                      : 'text-gray-900'
-                  }`}>
-                    {member.membership_expiry 
-                      ? formatDate(member.membership_expiry)
-                      : '-'}
-                  </span>
+                  {getExpiryDate(member)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getMembershipStatus(member)}

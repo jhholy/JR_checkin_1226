@@ -9,13 +9,16 @@ import { supabase } from '../../lib/supabase';
 import { Trash2 } from 'lucide-react';
 
 type Member = Database['public']['Tables']['members']['Row'];
-type MembershipType = Database['public']['Enums']['membership_type'];
+type CardType = Database['public']['Enums']['CardType'];
+type CardCategory = Database['public']['Enums']['CardCategory'];
+type CardSubtype = Database['public']['Enums']['CardSubtype'];
 
 const PAGE_SIZE = 10;
 
 export default function MemberList() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [membershipFilter, setMembershipFilter] = useState<MembershipType | ''>('');
+  const [cardTypeFilter, setCardTypeFilter] = useState<CardType | ''>('');
+  const [cardSubtypeFilter, setCardSubtypeFilter] = useState<CardSubtype | ''>('');
   const [expiryFilter, setExpiryFilter] = useState<'upcoming' | 'expired' | ''>('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -35,7 +38,8 @@ export default function MemberList() {
   const handleSearch = (page: number = 1) => {
     searchMembers({
       searchTerm,
-      membershipType: membershipFilter,
+      cardType: cardTypeFilter,
+      cardSubtype: cardSubtypeFilter,
       expiryStatus: expiryFilter,
       page,
       pageSize: PAGE_SIZE
@@ -109,19 +113,37 @@ export default function MemberList() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              会员卡类型 Membership Type
+              卡类型 Card Type
             </label>
             <select
-              value={membershipFilter}
-              onChange={(e) => setMembershipFilter(e.target.value as MembershipType | '')}
+              value={cardTypeFilter}
+              onChange={(e) => setCardTypeFilter(e.target.value as CardType | '')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="">全部 All</option>
-              <option value="single_class">单次卡 Single Class</option>
-              <option value="two_classes">两次卡 Two Classes</option>
-              <option value="ten_classes">10次卡 Ten Classes</option>
-              <option value="single_monthly">单次月卡 Single Monthly</option>
-              <option value="double_monthly">双次月卡 Double Monthly</option>
+              <option value="class">团课次卡 Class</option>
+              <option value="monthly">团课月卡 Monthly</option>
+              <option value="private">私教卡 Private</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              卡子类型 Card Subtype
+            </label>
+            <select
+              value={cardSubtypeFilter}
+              onChange={(e) => setCardSubtypeFilter(e.target.value as CardSubtype | '')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">全部 All</option>
+              <option value="single_class">团课单次卡 Single Class</option>
+              <option value="two_classes">团课两次卡 Two Classes</option>
+              <option value="ten_classes">团课十次卡 Ten Classes</option>
+              <option value="single_monthly">团课单次月卡 Single Monthly</option>
+              <option value="double_monthly">团课双次月卡 Double Monthly</option>
+              <option value="single_private">单次私教卡 Single Private</option>
+              <option value="ten_private">十次私教卡 Ten Private</option>
             </select>
           </div>
 

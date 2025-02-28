@@ -11,8 +11,9 @@ import MemberList from '../components/admin/MemberList';
 import CheckInRecordsList from '../components/admin/CheckInRecordsList';
 import ExcelImport from '../components/admin/ExcelImport';
 import DataExport from '../components/admin/DataExport';
+import TrainerList from '../components/admin/TrainerList';
 
-type ActiveTab = 'members' | 'checkins' | 'import' | 'export';
+type ActiveTab = 'members' | 'checkins' | 'trainers' | 'import' | 'export';
 
 type DashboardStats = {
   totalMembers: number;
@@ -42,13 +43,18 @@ export default function AdminDashboard() {
     try {
       setStatsLoading(true);
       
-      // 获取今日日期
+      // 获取今日日期（设置为当天开始）
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // 获取7天后的日期
+      // 获取7天后的日期（设置为当天结束）
       const sevenDaysLater = new Date();
       sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+      sevenDaysLater.setHours(23, 59, 59, 999);
+
+      // 格式化日期
+      const todayStr = today.toISOString();
+      const sevenDaysLaterStr = sevenDaysLater.toISOString();
 
       // 并行获取各项统计数据
       const [
@@ -66,21 +72,23 @@ export default function AdminDashboard() {
         supabase
           .from('check_ins')
           .select('*', { count: 'exact', head: true })
-          .gte('created_at', today.toISOString()),
+          .gte('created_at', todayStr),
         
         // 额外签到数
         supabase
           .from('check_ins')
           .select('*', { count: 'exact', head: true })
           .eq('is_extra', true)
-          .gte('created_at', today.toISOString()),
+          .gte('created_at', todayStr),
         
-        // 即将过期会员数
+        // 即将过期会员数（从membership_cards表查询）
         supabase
-          .from('members')
-          .select('*', { count: 'exact', head: true })
-          .lte('membership_expiry', sevenDaysLater.toISOString())
-          .gt('membership_expiry', today.toISOString())
+          .from('membership_cards')
+          .select('member_id', { count: 'exact', head: true })
+          .not('valid_until', 'is', null)
+          .lte('valid_until', sevenDaysLaterStr)
+          .gt('valid_until', todayStr)
+          .order('valid_until', { ascending: true })
       ]);
 
       setStats({
@@ -103,6 +111,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'members', label: '会员管理' },
     { id: 'checkins', label: '签到记录' },
+    { id: 'trainers', label: '教练管理' },
     { id: 'import', label: '数据导入' },
     { id: 'export', label: '数据导出' },
   ];
@@ -195,6 +204,7 @@ export default function AdminDashboard() {
         {/* Tab Content */}
         {activeTab === 'members' && <MemberList />}
         {activeTab === 'checkins' && <CheckInRecordsList />}
+        {activeTab === 'trainers' && <TrainerList />}
         {activeTab === 'import' && <ExcelImport />}
         {activeTab === 'export' && <DataExport />}
       </main>

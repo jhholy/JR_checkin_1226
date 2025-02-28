@@ -8,6 +8,8 @@ interface FetchRecordsParams {
   endDate?: string;
   classType?: ClassType;
   isExtra?: boolean;
+  isPrivate?: boolean;
+  trainerId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -16,6 +18,7 @@ interface CheckInStats {
   total: number;
   regular: number;
   extra: number;
+  private: number;
 }
 
 export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
@@ -25,7 +28,12 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<CheckInStats>({ total: 0, regular: 0, extra: 0 });
+  const [stats, setStats] = useState<CheckInStats>({ 
+    total: 0, 
+    regular: 0, 
+    extra: 0,
+    private: 0
+  });
 
   const fetchStats = async (params: FetchRecordsParams) => {
     try {
@@ -34,7 +42,8 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         memberName: params.memberName,
         startDate: params.startDate,
         endDate: params.endDate,
-        classType: params.classType
+        classType: params.classType,
+        trainerId: params.trainerId
       };
 
       // 创建新的查询并应用过滤条件
@@ -55,25 +64,30 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         if (queryFilters.classType) {
           query = query.eq('class_type', queryFilters.classType);
         }
+        if (queryFilters.trainerId) {
+          query = query.eq('trainer_id', queryFilters.trainerId);
+        }
 
         return query;
       };
 
       // 分别获取各类型签到数量
-      const [totalResult, regularResult, extraResult] = await Promise.all([
+      const [totalResult, regularResult, extraResult, privateResult] = await Promise.all([
         createFilteredQuery(),
         createFilteredQuery().eq('is_extra', false),
-        createFilteredQuery().eq('is_extra', true)
+        createFilteredQuery().eq('is_extra', true),
+        createFilteredQuery().eq('is_private', true)
       ]);
 
       return {
         total: totalResult.count || 0,
         regular: regularResult.count || 0,
-        extra: extraResult.count || 0
+        extra: extraResult.count || 0,
+        private: privateResult.count || 0
       };
     } catch (error) {
       console.error('Error fetching stats:', error);
-      return { total: 0, regular: 0, extra: 0 };
+      return { total: 0, regular: 0, extra: 0, private: 0 };
     }
   };
 
@@ -83,6 +97,8 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
     endDate,
     classType,
     isExtra,
+    isPrivate,
+    trainerId,
     page = 1,
     pageSize = initialPageSize
   }: FetchRecordsParams) => {
@@ -96,7 +112,9 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         startDate,
         endDate,
         classType,
-        isExtra
+        isExtra,
+        isPrivate,
+        trainerId
       });
       setStats(statsData);
       
@@ -108,9 +126,11 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
           member_id,
           class_type,
           is_extra,
+          is_private,
           created_at,
           check_in_date,
-          members!inner(name, email)
+          members!inner(name, email),
+          trainer:trainers(name)
         `, {
           count: 'exact'
         });
@@ -129,6 +149,12 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
       }
       if (isExtra !== undefined) {
         query = query.eq('is_extra', isExtra);
+      }
+      if (isPrivate !== undefined) {
+        query = query.eq('is_private', isPrivate);
+      }
+      if (trainerId) {
+        query = query.eq('trainer_id', trainerId);
       }
 
       const { data, error: queryError, count } = await query
@@ -159,6 +185,6 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
     loading,
     error,
     fetchRecords,
-    stats  // 添加统计数据到返回值
+    stats
   };
 }

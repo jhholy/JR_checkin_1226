@@ -1,27 +1,28 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-// import { Member, MembershipType } from '../types/database';
+import { Member, CardType, CardSubtype } from '../types/database';
 import { QueryCache, createCacheKey } from '../utils/cacheUtils';
 import { handleSupabaseError } from '../utils/fetchUtils';
 import { normalizeNameForComparison } from '../utils/memberUtils';
 
 interface SearchParams {
   searchTerm?: string;
-  membershipType?:  '';
+  cardType?: CardType | '';
+  cardSubtype?: CardSubtype | '';
   expiryStatus?: 'upcoming' | 'expired' | '';
   page?: number;
   pageSize?: number;
 }
 
 interface SearchResult {
-  members: any[];
+  members: Member[];
   totalCount: number;
   currentPage: number;
   totalPages: number;
 }
 
 const memberCache = new QueryCache<{
-  members: any[];
+  members: Member[];
   totalCount: number;
 }>();
 
@@ -60,66 +61,83 @@ export function useMemberSearch(defaultPageSize: number = 10) {
 
       let query = supabase
         .from('members')
-        .select('*', { count: 'exact' });
+        .select(`
+          *,
+          membership_cards (
+            id,
+            card_type,
+            card_subtype,
+            valid_until,
+            remaining_group_sessions,
+            remaining_private_sessions,
+            trainer_type
+          )
+        `, { count: 'exact' });
 
       if (params.searchTerm) {
-        // Case-insensitive search with normalized comparison
         const searchTerm = params.searchTerm.trim();
-        query = query.ilike('name', `%${searchTerm}%`);
+        query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
       }
 
-      if (params.membershipType) {
-        query = query.eq('membership', params.membershipType);
-      }
-
-      if (params.expiryStatus) {
-        const today = new Date().toISOString();
-        const threeDaysFromNow = new Date();
-        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-
-        if (params.expiryStatus === 'expired') {
-          query = query.or(
-            `membership_expiry.lt.${today},and(remaining_classes.eq.0,membership.neq.single_monthly,membership.neq.double_monthly)`
-          );
-        } else if (params.expiryStatus === 'upcoming') {
-          query = query.or(
-            `and(membership_expiry.gt.${today},membership_expiry.lt.${threeDaysFromNow.toISOString()}),and(remaining_classes.lte.2,remaining_classes.gt.0,membership.neq.single_monthly,membership.neq.double_monthly)`
-          );
-        }
-      }
-
-      const { data, error: fetchError } = await query
+      // 获取所有会员数据
+      const { data, error: fetchError, count } = await query
         .order('id', { ascending: false })
         .range(start, end);
 
       if (fetchError) throw fetchError;
 
-      // const totalCount = count || 0;
-      // const totalPages = Math.ceil(totalCount / pageSize);
+      // 在内存中过滤会员卡类型
+      let filteredData = data || [];
 
-      // if (!params.searchTerm) {
-      //   console.log('searchTerm', params.searchTerm);
-      //   throw new Error('searchTerm is required');
-      // }
+      if (params.cardType) {
+        filteredData = filteredData.filter(member => 
+          member.membership_cards?.some(card => card.card_type === params.cardType)
+        );
+      }
 
-      // Post-process results to handle case and space insensitive matching
-      const filteredData = params.searchTerm
-        ? data?.filter(member => 
-            normalizeNameForComparison(member.name)
-              .includes(normalizeNameForComparison(params.searchTerm!))
-          )
-        : data;
+      if (params.cardSubtype) {
+        filteredData = filteredData.filter(member =>
+          member.membership_cards?.some(card => card.card_subtype === params.cardSubtype)
+        );
+      }
+
+      if (params.expiryStatus) {
+        const today = new Date();
+        const threeDaysFromNow = new Date();
+        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+        filteredData = filteredData.filter(member => {
+          const hasValidCard = member.membership_cards?.some(card => {
+            const validUntil = new Date(card.valid_until);
+            if (params.expiryStatus === 'expired') {
+              return validUntil < today;
+            } else if (params.expiryStatus === 'upcoming') {
+              return validUntil > today && validUntil < threeDaysFromNow;
+            }
+            return false;
+          });
+          return hasValidCard;
+        });
+      }
+
+      // 名字模糊匹配
+      if (params.searchTerm) {
+        filteredData = filteredData.filter(member => 
+          normalizeNameForComparison(member.name)
+            .includes(normalizeNameForComparison(params.searchTerm!))
+        );
+      }
 
       memberCache.set(cacheKey, {
-        members: filteredData || [],
-        totalCount: filteredData?.length || 0
+        members: filteredData,
+        totalCount: filteredData.length
       });
 
       setResult({
-        members: filteredData || [],
-        totalCount: filteredData?.length || 0,
+        members: filteredData,
+        totalCount: filteredData.length,
         currentPage: page,
-        totalPages: Math.ceil((filteredData?.length || 0) / pageSize)
+        totalPages: Math.ceil(filteredData.length / pageSize)
       });
     } catch (err) {
       console.error('Query error:', err);
@@ -133,7 +151,15 @@ export function useMemberSearch(defaultPageSize: number = 10) {
     try {
       setLoading(true);
 
-      // 1. 先删除该会员的签到记录
+      // 1. 删除会员卡
+      const { error: cardsError } = await supabase
+        .from('membership_cards')
+        .delete()
+        .eq('member_id', memberId);
+
+      if (cardsError) throw cardsError;
+
+      // 2. 删除签到记录
       const { error: checkInsError } = await supabase
         .from('check_ins')
         .delete()
@@ -141,7 +167,7 @@ export function useMemberSearch(defaultPageSize: number = 10) {
 
       if (checkInsError) throw checkInsError;
 
-      // 2. 再删除会员本身
+      // 3. 删除会员
       const { error: memberError } = await supabase
         .from('members')
         .delete()
@@ -149,7 +175,6 @@ export function useMemberSearch(defaultPageSize: number = 10) {
 
       if (memberError) throw memberError;
       
-      // Clear cache and refresh data
       memberCache.clear();
       await searchMembers({ page: result.currentPage });
       
@@ -162,24 +187,9 @@ export function useMemberSearch(defaultPageSize: number = 10) {
     }
   };
 
-  const updateMember = async (memberId: string, updates: Partial<any>) => {
+  const updateMember = async (memberId: string, updates: Partial<Member>) => {
     try {
       setLoading(true);
-
-      // 如果更新包含会员类型变更，自动处理相关字段
-      if (updates.membership) {
-        const isMonthly = updates.membership === 'single_monthly' || updates.membership === 'double_monthly';
-        
-        // 如果改为次卡，清除到期时间
-        if (!isMonthly) {
-          updates.membership_expiry = null;
-        }
-        
-        // 如果改为月卡，清除剩余课时
-        if (isMonthly) {
-          updates.remaining_classes = 0;
-        }
-      }
 
       const { error } = await supabase
         .from('members')
@@ -188,7 +198,6 @@ export function useMemberSearch(defaultPageSize: number = 10) {
 
       if (error) throw error;
       
-      // Clear cache and refresh data
       memberCache.clear();
       await searchMembers({ page: result.currentPage });
       
