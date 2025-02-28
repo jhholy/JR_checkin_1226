@@ -8,7 +8,7 @@ interface FetchRecordsParams {
   endDate?: string;
   classType?: ClassType;
   isExtra?: boolean;
-  isPrivate?: boolean;
+  is1v2?: boolean;
   trainerId?: string;
   page?: number;
   pageSize?: number;
@@ -18,7 +18,8 @@ interface CheckInStats {
   total: number;
   regular: number;
   extra: number;
-  private: number;
+  oneOnOne: number;
+  oneOnTwo: number;
 }
 
 export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
@@ -32,7 +33,8 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
     total: 0, 
     regular: 0, 
     extra: 0,
-    private: 0
+    oneOnOne: 0,
+    oneOnTwo: 0
   });
 
   const fetchStats = async (params: FetchRecordsParams) => {
@@ -72,22 +74,36 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
       };
 
       // 分别获取各类型签到数量
-      const [totalResult, regularResult, extraResult, privateResult] = await Promise.all([
+      const [
+        totalResult, 
+        regularResult, 
+        extraResult, 
+        oneOnOneResult,
+        oneOnTwoResult
+      ] = await Promise.all([
         createFilteredQuery(),
         createFilteredQuery().eq('is_extra', false),
         createFilteredQuery().eq('is_extra', true),
-        createFilteredQuery().eq('is_private', true)
+        createFilteredQuery().eq('is_1v2', false).not('trainer_id', 'is', null),
+        createFilteredQuery().eq('is_1v2', true)
       ]);
 
       return {
         total: totalResult.count || 0,
         regular: regularResult.count || 0,
         extra: extraResult.count || 0,
-        private: privateResult.count || 0
+        oneOnOne: oneOnOneResult.count || 0,
+        oneOnTwo: oneOnTwoResult.count || 0
       };
     } catch (error) {
       console.error('Error fetching stats:', error);
-      return { total: 0, regular: 0, extra: 0, private: 0 };
+      return { 
+        total: 0, 
+        regular: 0, 
+        extra: 0, 
+        oneOnOne: 0,
+        oneOnTwo: 0
+      };
     }
   };
 
@@ -97,7 +113,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
     endDate,
     classType,
     isExtra,
-    isPrivate,
+    is1v2,
     trainerId,
     page = 1,
     pageSize = initialPageSize
@@ -113,7 +129,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         endDate,
         classType,
         isExtra,
-        isPrivate,
+        is1v2,
         trainerId
       });
       setStats(statsData);
@@ -126,7 +142,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
           member_id,
           class_type,
           is_extra,
-          is_private,
+          is_1v2,
           created_at,
           check_in_date,
           members!inner(name, email),
@@ -150,8 +166,8 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
       if (isExtra !== undefined) {
         query = query.eq('is_extra', isExtra);
       }
-      if (isPrivate !== undefined) {
-        query = query.eq('is_private', isPrivate);
+      if (is1v2 !== undefined) {
+        query = query.eq('is_1v2', is1v2);
       }
       if (trainerId) {
         query = query.eq('trainer_id', trainerId);

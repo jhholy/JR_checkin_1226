@@ -204,6 +204,19 @@ export default function EditMemberModal({ member, onClose, onUpdate }: Props) {
 
     try {
       setLoading(true);
+
+      // 1. 先删除关联的签到记录
+      const { error: checkInsError } = await supabase
+        .from('check_ins')
+        .delete()
+        .eq('card_id', cardId);
+
+      if (checkInsError) {
+        console.error('删除签到记录失败:', checkInsError);
+        throw new Error(`删除签到记录失败: ${checkInsError.message}`);
+      }
+
+      // 2. 再删除会员卡
       const { error } = await supabase
         .from('membership_cards')
         .delete()
@@ -214,7 +227,7 @@ export default function EditMemberModal({ member, onClose, onUpdate }: Props) {
         throw new Error(`删除会员卡失败: ${error.message}`);
       }
 
-      // 从本地状态中移除该卡
+      // 3. 从本地状态中移除该卡
       setMembershipCards(cards => cards.filter(card => card.id !== cardId));
     } catch (err) {
       console.error('删除会员卡时出错:', err);

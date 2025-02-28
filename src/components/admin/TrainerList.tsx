@@ -55,7 +55,7 @@ export default function TrainerList() {
       
       const { data: checkIns, error } = await supabase
         .from('check_ins')
-        .select('trainer_id, is_private')
+        .select('trainer_id, is_1v2')
         .gte('created_at', firstDayOfMonth.toISOString());
 
       if (error) throw error;
@@ -74,9 +74,14 @@ export default function TrainerList() {
         }
 
         trainerStats[checkIn.trainer_id].totalClasses++;
-        if (checkIn.is_private) {
+        if (checkIn.is_1v2) {
+          // 一对二私教课
+          trainerStats[checkIn.trainer_id].privateClasses++;
+        } else if (checkIn.trainer_id) {
+          // 一对一私教课
           trainerStats[checkIn.trainer_id].privateClasses++;
         } else {
+          // 团课
           trainerStats[checkIn.trainer_id].groupClasses++;
         }
       });

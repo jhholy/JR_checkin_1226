@@ -6,7 +6,8 @@ import { useMemberSearch } from '../../hooks/useMemberSearch';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { supabase } from '../../lib/supabase';
-import { Trash2 } from 'lucide-react';
+import { Trash2, UserPlus } from 'lucide-react';
+import AddMemberModal from './AddMemberModal';
 
 type Member = Database['public']['Tables']['members']['Row'];
 type CardType = Database['public']['Enums']['CardType'];
@@ -22,6 +23,8 @@ export default function MemberList() {
   const [expiryFilter, setExpiryFilter] = useState<'upcoming' | 'expired' | ''>('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const { 
     members, 
@@ -93,7 +96,18 @@ export default function MemberList() {
   if (error) return <ErrorMessage message={error} />;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-medium">会员列表 Member List</h2>
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors gap-2"
+        >
+          <UserPlus className="w-5 h-5" />
+          <span>添加会员 Add Member</span>
+        </button>
+      </div>
+
       <div className="bg-white p-4 rounded-lg shadow">
         <h3 className="text-lg font-medium mb-4">搜索筛选 Search Filters</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -190,6 +204,13 @@ export default function MemberList() {
           member={selectedMember}
           onClose={() => setSelectedMember(null)}
           onUpdate={handleUpdate}
+        />
+      )}
+
+      {isAddModalOpen && (
+        <AddMemberModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
         />
       )}
     </div>

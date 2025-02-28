@@ -21,7 +21,14 @@ export default function MemberTable({
   onPageChange 
 }: Props) {
   const getMembershipStatus = (member: Member & { membership_cards?: MembershipCard[] }) => {
-    if (!member.membership_cards?.length) return null;
+    if (!member.membership_cards?.length) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          无会员卡 No Card
+        </span>
+      );
+    }
 
     // 检查所有会员卡的状态
     const hasExpiredCard = member.membership_cards.some(card => 
@@ -40,7 +47,7 @@ export default function MemberTable({
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
           <AlertCircle className="w-3 h-3 mr-1" />
-          已过期
+          已过期 Expired
         </span>
       );
     }
@@ -49,7 +56,7 @@ export default function MemberTable({
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
           <AlertCircle className="w-3 h-3 mr-1" />
-          即将到期
+          即将到期 Expiring Soon
         </span>
       );
     }
@@ -58,12 +65,16 @@ export default function MemberTable({
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
           <AlertCircle className="w-3 h-3 mr-1" />
-          课时不足
+          课时不足 Low Classes
         </span>
       );
     }
 
-    return null;
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+        正常 Active
+      </span>
+    );
   };
 
   const getCardTypes = (member: Member & { membership_cards?: MembershipCard[] }) => {

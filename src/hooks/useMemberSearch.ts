@@ -46,19 +46,6 @@ export function useMemberSearch(defaultPageSize: number = 10) {
       const start = (page - 1) * pageSize;
       const end = start + pageSize - 1;
 
-      const cacheKey = createCacheKey('members', params);
-      const cachedData = memberCache.get(cacheKey);
-      if (cachedData) {
-        setResult({
-          members: cachedData.members,
-          totalCount: cachedData.totalCount,
-          currentPage: page,
-          totalPages: Math.ceil(cachedData.totalCount / pageSize)
-        });
-        setLoading(false);
-        return;
-      }
-
       let query = supabase
         .from('members')
         .select(`
@@ -74,40 +61,43 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           )
         `, { count: 'exact' });
 
+      // 在数据库层面进行过滤
+      if (params.cardType) {
+        query = query.eq('membership_cards.card_type', params.cardType);
+      }
+
+      if (params.cardSubtype) {
+        query = query.eq('membership_cards.card_subtype', params.cardSubtype);
+      }
+
       if (params.searchTerm) {
         const searchTerm = params.searchTerm.trim();
         query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
       }
 
-      // 获取所有会员数据
+      // 获取过滤后的会员数据
       const { data, error: fetchError, count } = await query
         .order('id', { ascending: false })
         .range(start, end);
 
       if (fetchError) throw fetchError;
 
-      // 在内存中过滤会员卡类型
       let filteredData = data || [];
 
-      if (params.cardType) {
-        filteredData = filteredData.filter(member => 
-          member.membership_cards?.some(card => card.card_type === params.cardType)
-        );
-      }
-
-      if (params.cardSubtype) {
-        filteredData = filteredData.filter(member =>
-          member.membership_cards?.some(card => card.card_subtype === params.cardSubtype)
-        );
-      }
-
+      // 在内存中处理到期状态过滤
       if (params.expiryStatus) {
         const today = new Date();
         const threeDaysFromNow = new Date();
         threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
 
         filteredData = filteredData.filter(member => {
-          const hasValidCard = member.membership_cards?.some(card => {
+          // 如果没有会员卡,不应该出现在到期筛选中
+          if (!member.membership_cards || member.membership_cards.length === 0) {
+            return false;
+          }
+
+          const hasValidCard = member.membership_cards.some(card => {
+            if (!card.valid_until) return false;
             const validUntil = new Date(card.valid_until);
             if (params.expiryStatus === 'expired') {
               return validUntil < today;
@@ -120,24 +110,25 @@ export function useMemberSearch(defaultPageSize: number = 10) {
         });
       }
 
-      // 名字模糊匹配
-      if (params.searchTerm) {
+      // 如果有卡类型或子类型筛选,需要过滤掉没有会员卡的会员
+      if (params.cardType || params.cardSubtype) {
         filteredData = filteredData.filter(member => 
-          normalizeNameForComparison(member.name)
-            .includes(normalizeNameForComparison(params.searchTerm!))
+          member.membership_cards && member.membership_cards.length > 0
         );
       }
 
-      memberCache.set(cacheKey, {
+      // 更新缓存和状态
+      const totalCount = count || 0;
+      memberCache.set(createCacheKey('members', params), {
         members: filteredData,
-        totalCount: filteredData.length
+        totalCount
       });
 
       setResult({
         members: filteredData,
-        totalCount: filteredData.length,
+        totalCount,
         currentPage: page,
-        totalPages: Math.ceil(filteredData.length / pageSize)
+        totalPages: Math.ceil(totalCount / pageSize)
       });
     } catch (err) {
       console.error('Query error:', err);
@@ -151,37 +142,102 @@ export function useMemberSearch(defaultPageSize: number = 10) {
     try {
       setLoading(true);
 
-      // 1. 删除会员卡
+      // 1. 先获取该会员的所有会员卡ID
+      const { data: memberCards, error: cardsQueryError } = await supabase
+        .from('membership_cards')
+        .select('id')
+        .eq('member_id', memberId);
+
+      if (cardsQueryError) {
+        console.error('获取会员卡失败:', cardsQueryError);
+        throw new Error(`获取会员卡失败: ${cardsQueryError.message}`);
+      }
+
+      const cardIds = memberCards?.map(card => card.id) || [];
+      console.log('要删除的会员卡IDs:', cardIds);
+
+      // 2. 删除所有相关的签到记录
+      // 2.1 删除按member_id关联的签到记录
+      const { error: memberCheckInsError } = await supabase
+        .from('check_ins')
+        .delete()
+        .eq('member_id', memberId);
+
+      if (memberCheckInsError) {
+        console.error('删除会员签到记录失败:', memberCheckInsError);
+        throw new Error(`删除会员签到记录失败: ${memberCheckInsError.message}`);
+      }
+
+      // 2.2 删除按card_id关联的签到记录
+      if (cardIds.length > 0) {
+        // 先检查是否还有相关的签到记录
+        const { data: remainingCheckIns, error: checkError } = await supabase
+          .from('check_ins')
+          .select('id, card_id')
+          .in('card_id', cardIds);
+
+        if (checkError) {
+          console.error('检查剩余签到记录失败:', checkError);
+          throw new Error(`检查剩余签到记录失败: ${checkError.message}`);
+        }
+
+        console.log('剩余的签到记录:', remainingCheckIns);
+
+        if (remainingCheckIns && remainingCheckIns.length > 0) {
+          const { error: cardCheckInsError } = await supabase
+            .from('check_ins')
+            .delete()
+            .in('card_id', cardIds);
+
+          if (cardCheckInsError) {
+            console.error('删除会员卡签到记录失败:', cardCheckInsError);
+            throw new Error(`删除会员卡签到记录失败: ${cardCheckInsError.message}`);
+          }
+        }
+      }
+
+      // 3. 删除会员卡
       const { error: cardsError } = await supabase
         .from('membership_cards')
         .delete()
         .eq('member_id', memberId);
 
-      if (cardsError) throw cardsError;
+      if (cardsError) {
+        console.error('删除会员卡失败:', cardsError);
+        throw new Error(`删除会员卡失败: ${cardsError.message}`);
+      }
 
-      // 2. 删除签到记录
-      const { error: checkInsError } = await supabase
-        .from('check_ins')
-        .delete()
-        .eq('member_id', memberId);
-
-      if (checkInsError) throw checkInsError;
-
-      // 3. 删除会员
+      // 4. 删除会员
       const { error: memberError } = await supabase
         .from('members')
         .delete()
         .eq('id', memberId);
 
-      if (memberError) throw memberError;
-      
-      memberCache.clear();
-      await searchMembers({ page: result.currentPage });
-      
+      if (memberError) {
+        console.error('删除会员失败:', memberError);
+        throw new Error(`删除会员失败: ${memberError.message}`);
+      }
+
+      // 更新本地状态
+      setResult(prevResult => ({
+        ...prevResult,
+        members: prevResult.members.filter(m => m.id !== memberId),
+        totalCount: Math.max(0, prevResult.totalCount - 1),
+        totalPages: Math.ceil((prevResult.totalCount - 1) / defaultPageSize)
+      }));
+
+      // 如果当前页变空且不是第一页，则回到上一页
+      if (result.members.length === 1 && result.currentPage > 1) {
+        await searchMembers({ page: result.currentPage - 1 });
+      } else {
+        // 否则刷新当前页
+        await searchMembers({ page: result.currentPage });
+      }
+
       return { success: true };
-    } catch (err) {
-      console.error('Delete error:', err);
-      throw new Error('删除失败，请重试。Delete failed, please try again.');
+    } catch (error) {
+      console.error('Delete error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
