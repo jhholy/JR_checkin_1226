@@ -1,8 +1,8 @@
 import React from 'react';
 import { Member } from '../../types/database';
 import { formatMembershipType, isMonthlyMembership } from '../../utils/memberUtils';
-import { formatDate } from '../../utils/dateUtils';
-import { Pencil, Trash2 } from 'lucide-react';
+import { formatDate, isWithinDays, isPast } from '../../utils/dateUtils';
+import { Pencil, Trash2, AlertCircle } from 'lucide-react';
 
 interface Props {
   members: Member[];
@@ -21,11 +21,53 @@ export default function MemberTable({
   totalPages,
   onPageChange 
 }: Props) {
+  const getMembershipStatus = (member: Member) => {
+    if (!member.membership) return null;
+
+    const isExpiringSoon = member.membership_expiry && isWithinDays(new Date(member.membership_expiry), 7);
+    const isExpired = member.membership_expiry && isPast(new Date(member.membership_expiry));
+    const hasLowClasses = !isMonthlyMembership(member.membership) && (member.remaining_classes || 0) <= 2;
+
+    if (isExpired) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          已过期
+        </span>
+      );
+    }
+
+    if (isExpiringSoon) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          即将到期
+        </span>
+      );
+    }
+
+    if (hasLowClasses) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          课时不足
+        </span>
+      );
+    }
+
+    return null;
+  };
+
   const getRemainingClasses = (member: Member) => {
     if (isMonthlyMembership(member.membership)) {
       return 'N/A';
     }
-    return member.remaining_classes || 0;
+    const remaining = member.remaining_classes || 0;
+    return (
+      <span className={`${remaining <= 2 ? 'text-orange-600 font-medium' : ''}`}>
+        {remaining}
+      </span>
+    );
   };
 
   return (
@@ -45,6 +87,9 @@ export default function MemberTable({
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 到期日期 EXPIRY
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                状态 STATUS
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作 ACTIONS
@@ -75,11 +120,18 @@ export default function MemberTable({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">
+                  <span className={`text-sm ${
+                    member.membership_expiry && isWithinDays(new Date(member.membership_expiry), 7)
+                      ? 'text-yellow-600 font-medium'
+                      : 'text-gray-900'
+                  }`}>
                     {member.membership_expiry 
                       ? formatDate(member.membership_expiry)
                       : '-'}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {getMembershipStatus(member)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <div className="flex items-center gap-2">

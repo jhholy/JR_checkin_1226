@@ -13,7 +13,8 @@ export default function CheckInRecordsList() {
     startDate: '',
     endDate: '',
     classType: '' as ClassType | '',
-    isExtra: undefined as boolean | undefined
+    isExtra: undefined as boolean | undefined,
+    trainerId: ''
   });
 
   const {
@@ -33,6 +34,7 @@ export default function CheckInRecordsList() {
       endDate: filters.endDate || undefined,
       classType: filters.classType || undefined,
       isExtra: filters.isExtra,
+      trainerId: filters.trainerId,
       page,
       pageSize: 10
     });
@@ -52,7 +54,8 @@ export default function CheckInRecordsList() {
       startDate: '',
       endDate: '',
       classType: '',
-      isExtra: undefined
+      isExtra: undefined,
+      trainerId: ''
     });
     handleSearch(1);
   };
@@ -132,6 +135,26 @@ export default function CheckInRecordsList() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              教练 Trainer
+            </label>
+            <select
+              value={filters.trainerId}
+              onChange={(e) => setFilters(prev => ({ ...prev, trainerId: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
+            >
+              <option value="">全部 All</option>
+              <option value="jr">JR</option>
+              <option value="da">Da</option>
+              <option value="ming">Ming</option>
+              <option value="big">Big</option>
+              <option value="bas">Bas</option>
+              <option value="sumay">Sumay</option>
+              <option value="first">First</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               签到类型 Check-in Type
             </label>
             <select
@@ -188,6 +211,9 @@ export default function CheckInRecordsList() {
                       课程类型
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      教练
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       签到时间
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -206,6 +232,9 @@ export default function CheckInRecordsList() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.class_type === 'morning' ? '早课' : '晚课'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {record.trainer?.name || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {format(new Date(record.created_at), 'yyyy-MM-dd HH:mm:ss')}

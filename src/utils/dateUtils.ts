@@ -1,10 +1,8 @@
+import { format, isAfter, isBefore, addDays } from 'date-fns';
+
 // Add new function to format date
-export const formatDate = (date: string): string => {
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date(date));
+export const formatDate = (date: string | Date) => {
+  return format(new Date(date), 'yyyy-MM-dd');
 };
 
 export const isWithinClassHours = (classType: 'morning' | 'evening'): boolean => {
@@ -40,4 +38,14 @@ export const formatDateForDB = (date: Date | string | null): string | null => {
   } catch {
     return null;
   }
+};
+
+export const isWithinDays = (date: Date, days: number) => {
+  const today = new Date();
+  const futureDate = addDays(today, days);
+  return isAfter(date, today) && isBefore(date, futureDate);
+};
+
+export const isPast = (date: Date) => {
+  return isBefore(date, new Date());
 };
