@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckInFormData, ClassType } from '../types/database';
+import { CheckInFormData } from '../types/database';
 import { validateCheckInForm } from '../utils/validation/formValidation';
 import EmailVerification from './member/EmailVerification';
 import CheckInFormFields from './member/CheckInFormFields';
@@ -14,15 +14,14 @@ interface Props {
 }
 
 export default function CheckInForm({ onSubmit, courseType, isNewMember = false, requireEmail = true }: Props) {
-  const [formData, setFormData] = useState<CheckInFormData>({
+  const [formData, setFormData] = useState<CheckInFormData>(() => ({
     name: '',
     email: '',
-    classType: 'morning',
-    // 私教课程特有字段
-    trainerId: '',
     timeSlot: '',
+    courseType,
+    trainerId: '',
     is1v2: false
-  });
+  }));
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,18 +39,28 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
     
     const validation = validateCheckInForm(formData.name, formData.email);
     if (!validation.isValid) {
+      console.error('表单基本验证失败:', validation.error);
       setError(validation.error || '验证失败。Validation failed.');
       return;
     }
 
-    // 私教课程的额外验证
+    if (!formData.timeSlot) {
+      console.error('时间段未选择');
+      setError('请选择时间段。Please select a time slot.');
+      return;
+    }
+
     if (courseType === 'private') {
       if (!formData.trainerId) {
+        console.error('私教课程未选择教练');
         setError('请选择教练。Please select a trainer.');
         return;
       }
-      if (!formData.timeSlot) {
-        setError('请选择时段。Please select a time slot.');
+      
+      const timeSlotPattern = /^\d{2}:\d{2}-\d{2}:\d{2}$/;
+      if (!timeSlotPattern.test(formData.timeSlot)) {
+        console.error('时间段格式无效:', formData.timeSlot);
+        setError('时间段格式无效。Invalid time slot format.');
         return;
       }
     }
@@ -60,24 +69,51 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
     setLoading(true);
 
     try {
-      const result = await onSubmit({
+      const submitData = {
         ...formData,
-        courseType // 添加课程类型
+        courseType,
+        trainerId: courseType === 'private' ? formData.trainerId : null,
+        is1v2: courseType === 'private' ? formData.is1v2 : false
+      };
+
+      console.log('提交签到表单:', {
+        ...submitData,
+        isNewMember
       });
+
+      const result = await onSubmit(submitData);
+
+      if (!result) {
+        throw new Error('签到失败：未收到有效响应');
+      }
+
+      console.log('签到结果:', result);
+
       if (result.isDuplicate) {
-        setError(result.message);
+        setError(result.message || '今天已经签到过了。Already checked in today.');
       } else if (result.needsEmailVerification) {
         setNeedsEmailVerification(true);
         setError('');
       } else if (!result.success) {
-        setError(result.message);
+        setError(result.message || '签到失败。Check-in failed.');
       }
     } catch (err) {
+      console.error('表单提交错误:', {
+        error: err,
+        formData: {
+          ...formData,
+          courseType
+        }
+      });
+
+      let errorMessage = '签到失败，请重试。Check-in failed, please try again.';
       if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('签到失败，请重试。Check-in failed, please try again.');
+        errorMessage = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        errorMessage = (err as any).message || errorMessage;
       }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -86,15 +122,23 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
   const handleEmailVerification = async (email: string) => {
     setFormData(prev => ({ ...prev, email }));
     try {
-      const result = await onSubmit({ ...formData, email });
-      if (!result.success) {
-        setError(result.message);
-        if (result.needsEmailVerification) {
+      const result = await onSubmit({
+        ...formData,
+        email,
+        courseType,
+        trainerId: courseType === 'private' ? formData.trainerId : null,
+        is1v2: courseType === 'private' ? formData.is1v2 : false
+      });
+
+      if (!result || !result.success) {
+        setError(result?.message || '邮箱验证失败。Email verification failed.');
+        if (result?.needsEmailVerification) {
           setNeedsEmailVerification(true);
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '邮箱验证失败，请重试。Email verification failed, please try again.');
+      const errorMessage = err instanceof Error ? err.message : '邮箱验证失败，请重试。Email verification failed, please try again.';
+      setError(errorMessage);
       setNeedsEmailVerification(true);
     }
   };
@@ -115,18 +159,16 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 基本信息字段 */}
       <CheckInFormFields
         name={formData.name}
         email={formData.email}
-        classType={formData.classType}
+        timeSlot={formData.timeSlot}
         loading={loading}
         isNewMember={isNewMember}
         onChange={handleFieldChange}
-        showClassType={courseType === 'group'} // 只在团课时显示早课/晚课选择
+        showTimeSlot={courseType === 'group'}
       />
 
-      {/* 私教课程特有字段 */}
       {courseType === 'private' && (
         <PrivateClassFields
           trainerId={formData.trainerId}

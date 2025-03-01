@@ -1,4 +1,5 @@
 import React from 'react';
+import { TrainerType } from '../../types/database';
 
 interface Props {
   trainerId: string;
@@ -15,27 +16,27 @@ export default function PrivateClassFields({
   loading,
   onChange
 }: Props) {
-  // 根据readme中的教练列表
+  // 教练列表
   const trainers = [
-    { id: 'jr', name: 'JR', type: 'JR' },
-    { id: 'da', name: 'Da', type: 'Senior' },
-    { id: 'ming', name: 'Ming', type: 'Senior' },
-    { id: 'big', name: 'Big', type: 'Senior' },
-    { id: 'bas', name: 'Bas', type: 'Senior' },
-    { id: 'sumay', name: 'Sumay', type: 'Senior' },
-    { id: 'first', name: 'First', type: 'Senior' }
+    { id: '71f17e43-8463-4e8c-a2fe-d3ab9b0198ef', name: 'Big', type: 'senior' as TrainerType },
+    { id: '7a029490-917d-47d7-b222-b81f634d46ec', name: 'JR', type: 'jr' as TrainerType },
+    { id: '5e9a09da-01ed-4792-b661-d44562aa3393', name: 'Da', type: 'senior' as TrainerType },
+    { id: 'cfa14eba-75d8-4e46-a764-c486ccdaa187', name: 'Ming', type: 'senior' as TrainerType },
+    { id: '08b82c89-770c-4392-bd17-75a62fcc9eb1', name: 'Bas', type: 'senior' as TrainerType },
+    { id: 'a4fec13a-5ae2-48ac-a675-815940fbbf5f', name: 'Sumay', type: 'senior' as TrainerType },
+    { id: '48dec2e7-1c37-4a90-b9d6-b252e1b91a14', name: 'First', type: 'senior' as TrainerType }
   ];
 
-  // 根据readme中的时段设置
+  // 私教课时间段
   const timeSlots = [
     // 早课
-    { id: '7-8', label: '7:00-8:00' },
-    { id: '8-9', label: '8:00-9:00' },
+    { id: '07:00-08:00', label: '07:00-08:00' },
+    { id: '08:00-09:00', label: '08:00-09:00' },
     { id: '10:30-11:30', label: '10:30-11:30' },
     // 下午
-    { id: '14-15', label: '14:00-15:00' },
-    { id: '15-16', label: '15:00-16:00' },
-    { id: '16-17', label: '16:00-17:00' },
+    { id: '14:00-15:00', label: '14:00-15:00' },
+    { id: '15:00-16:00', label: '15:00-16:00' },
+    { id: '16:00-17:00', label: '16:00-17:00' },
     // 晚课
     { id: '18:30-19:30', label: '18:30-19:30' }
   ];

@@ -6,12 +6,13 @@ interface FetchRecordsParams {
   memberName?: string;
   startDate?: string;
   endDate?: string;
-  classType?: ClassType;
+  timeSlot?: string;
   isExtra?: boolean;
   is1v2?: boolean;
   trainerId?: string;
   page?: number;
   pageSize?: number;
+  isPrivate?: boolean;
 }
 
 interface CheckInStats {
@@ -44,7 +45,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         memberName: params.memberName,
         startDate: params.startDate,
         endDate: params.endDate,
-        classType: params.classType,
+        timeSlot: params.timeSlot,
         trainerId: params.trainerId
       };
 
@@ -63,8 +64,8 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         if (queryFilters.endDate) {
           query = query.lte('check_in_date', queryFilters.endDate);
         }
-        if (queryFilters.classType) {
-          query = query.eq('class_type', queryFilters.classType);
+        if (queryFilters.timeSlot) {
+          query = query.eq('time_slot', queryFilters.timeSlot);
         }
         if (queryFilters.trainerId) {
           query = query.eq('trainer_id', queryFilters.trainerId);
@@ -84,8 +85,8 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         createFilteredQuery(),
         createFilteredQuery().eq('is_extra', false),
         createFilteredQuery().eq('is_extra', true),
-        createFilteredQuery().eq('is_1v2', false).not('trainer_id', 'is', null),
-        createFilteredQuery().eq('is_1v2', true)
+        createFilteredQuery().eq('is_private', true).eq('is_1v2', false),
+        createFilteredQuery().eq('is_private', true).eq('is_1v2', true)
       ]);
 
       return {
@@ -111,12 +112,13 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
     memberName,
     startDate,
     endDate,
-    classType,
+    timeSlot,
     isExtra,
     is1v2,
     trainerId,
     page = 1,
-    pageSize = initialPageSize
+    pageSize = initialPageSize,
+    isPrivate
   }: FetchRecordsParams) => {
     try {
       setLoading(true);
@@ -127,7 +129,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         memberName,
         startDate,
         endDate,
-        classType,
+        timeSlot,
         isExtra,
         is1v2,
         trainerId
@@ -140,8 +142,9 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         .select(`
           id,
           member_id,
-          class_type,
+          time_slot,
           is_extra,
+          is_private,
           is_1v2,
           created_at,
           check_in_date,
@@ -160,11 +163,14 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
       if (endDate) {
         query = query.lte('check_in_date', endDate);
       }
-      if (classType) {
-        query = query.eq('class_type', classType);
+      if (timeSlot) {
+        query = query.eq('time_slot', timeSlot);
       }
       if (isExtra !== undefined) {
         query = query.eq('is_extra', isExtra);
+      }
+      if (isPrivate !== undefined) {
+        query = query.eq('is_private', isPrivate);
       }
       if (is1v2 !== undefined) {
         query = query.eq('is_1v2', is1v2);

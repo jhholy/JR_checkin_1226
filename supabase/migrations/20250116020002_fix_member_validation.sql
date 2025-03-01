@@ -1,10 +1,36 @@
--- Fix security settings for register_new_member function
+-- Fix member validation functions
 BEGIN;
 
--- Drop existing function if exists
-DROP FUNCTION IF EXISTS register_new_member(text, text, class_type);
+-- Update validate_member_name function to remove email validation
+CREATE OR REPLACE FUNCTION validate_member_name(
+  p_name text,
+  p_email text DEFAULT NULL::text
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Basic validation
+  IF TRIM(p_name) = '' THEN
+    RAISE EXCEPTION '姓名不能为空。Name cannot be empty.'
+      USING HINT = 'empty_name';
+  END IF;
 
--- Create the function with proper security settings
+  -- Check for invalid characters
+  IF p_name !~ '^[a-zA-Z0-9\u4e00-\u9fa5@._\-\s]+$' THEN
+    RAISE EXCEPTION '姓名包含无效字符。Name contains invalid characters.'
+      USING HINT = 'invalid_characters';
+  END IF;
+
+  RETURN true;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE;
+END;
+$$;
+
+-- Update register_new_member function to include email validation
 CREATE OR REPLACE FUNCTION register_new_member(
   p_name text,
   p_email text,
@@ -27,6 +53,12 @@ BEGIN
   IF NOT validate_member_name(p_name) THEN
     RAISE EXCEPTION '无效的姓名格式。Invalid name format.'
       USING HINT = 'invalid_name';
+  END IF;
+
+  -- Email validation
+  IF p_email IS NULL OR TRIM(p_email) = '' THEN
+    RAISE EXCEPTION '邮箱是必填字段。Email is required.'
+      USING HINT = 'email_required';
   END IF;
 
   -- Lock the members table for the specific name to prevent concurrent registrations
@@ -98,7 +130,7 @@ END;
 $$;
 
 -- Grant necessary permissions
-GRANT EXECUTE ON FUNCTION register_new_member(text, text, class_type, boolean, uuid, text, boolean) TO public;
 GRANT EXECUTE ON FUNCTION validate_member_name(text, text) TO public;
+GRANT EXECUTE ON FUNCTION register_new_member(text, text, class_type, boolean, uuid, text, boolean) TO public;
 
 COMMIT; 

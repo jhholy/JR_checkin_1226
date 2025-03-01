@@ -26,7 +26,8 @@ export function useCheckIn() {
       logger.info('开始签到流程', { 
         name: formData.name, 
         email: formData.email,
-        classType: formData.classType 
+        timeSlot: formData.timeSlot,
+        courseType: formData.courseType
       });
 
       // Find member
@@ -45,14 +46,19 @@ export function useCheckIn() {
       if (result.is_new) {
         logger.info('注册新会员', { 
           name: formData.name,
-          email: formData.email
+          email: formData.email,
+          timeSlot: formData.timeSlot
         });
 
+        // 第一步：注册新会员
         const { data: registerResult, error: registerError } = await supabase
           .rpc('register_new_member', {
             p_name: formData.name,
             p_email: formData.email,
-            p_class_type: formData.classType
+            p_time_slot: formData.timeSlot,
+            p_is_private: formData.courseType === 'private',
+            p_trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
+            p_is_1v2: formData.courseType === 'private' ? formData.is1v2 : false
           });
 
         if (registerError) {
@@ -61,11 +67,26 @@ export function useCheckIn() {
             details: registerError.details,
             hint: registerError.hint
           });
-          throw registerError;
+          // 不直接抛出错误，而是返回错误结果
+          return {
+            success: false,
+            message: registerError.message || '新会员注册失败，请重试。New member registration failed, please try again.',
+            isNewMember: true
+          };
+        }
+
+        if (!registerResult) {
+          logger.error('新会员注册结果无效');
+          return {
+            success: false,
+            message: '新会员注册失败，请重试。New member registration failed, please try again.',
+            isNewMember: true
+          };
         }
 
         logger.info('新会员注册成功', registerResult);
         
+        // 新会员注册时已经创建了签到记录,直接返回结果
         return {
           success: true,
           isExtra: true,
@@ -86,7 +107,8 @@ export function useCheckIn() {
       // Log check-in attempt
       logger.info('尝试签到', {
         member_id: result.member_id,
-        class_type: formData.classType
+        timeSlot: formData.timeSlot,
+        courseType: formData.courseType
       });
 
       // Proceed with check-in
@@ -94,8 +116,11 @@ export function useCheckIn() {
         .from('check_ins')
         .insert([{
           member_id: result.member_id,
-          class_type: formData.classType,
-          check_in_date: new Date().toISOString().split('T')[0]
+          check_in_date: new Date().toISOString().split('T')[0],
+          is_private: formData.courseType === 'private',
+          trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
+          time_slot: formData.timeSlot,
+          is_1v2: formData.courseType === 'private' ? formData.is1v2 : false
         }])
         .select('is_extra, members(is_new_member)')
         .single();
@@ -153,7 +178,10 @@ export function useCheckIn() {
       const errorDetails = {
         error: err instanceof Error ? err.message : 'Unknown error',
         name: formData.name,
-        classType: formData.classType,
+        timeSlot: formData.timeSlot,
+        courseType: formData.courseType,
+        trainerId: formData.trainerId,
+        is1v2: formData.is1v2,
         stack: err instanceof Error ? err.stack : undefined,
         fullError: JSON.stringify(err, Object.getOwnPropertyNames(err))
       };
@@ -161,12 +189,22 @@ export function useCheckIn() {
       console.error('签到失败详细信息:', errorDetails);
       logger.error('签到失败', errorDetails);
       
-      const message = err instanceof Error ? err.message : messages.checkIn.error;
-      setError(message);
+      let errorMessage: string;
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        errorMessage = (err as any).message || messages.checkIn.error;
+      } else {
+        errorMessage = messages.checkIn.error;
+      }
       
+      setError(errorMessage);
+      
+      // 确保返回有效的CheckInResult
       return {
         success: false,
-        message
+        message: errorMessage,
+        isNewMember: result?.is_new
       };
     } finally {
       setLoading(false);

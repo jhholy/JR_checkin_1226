@@ -57,6 +57,7 @@ export default function TrainerList() {
           .from('check_ins')
           .select('*', { count: 'exact' })
           .eq('trainer_id', trainer.id)
+          .eq('is_private', true)
           .eq('is_1v2', false)
           .gte('check_in_date', format(dateRange.start!, 'yyyy-MM-dd'))
           .lte('check_in_date', format(dateRange.end!, 'yyyy-MM-dd'));
@@ -66,6 +67,7 @@ export default function TrainerList() {
           .from('check_ins')
           .select('*', { count: 'exact' })
           .eq('trainer_id', trainer.id)
+          .eq('is_private', true)
           .eq('is_1v2', true)
           .gte('check_in_date', format(dateRange.start!, 'yyyy-MM-dd'))
           .lte('check_in_date', format(dateRange.end!, 'yyyy-MM-dd'));

@@ -451,3 +451,12 @@ export type CardCategory = Database['public']['Enums']['CardCategory'];
 export type CardSubtype = Database['public']['Enums']['CardSubtype'];
 export type TrainerType = Database['public']['Enums']['TrainerType'];
 
+export interface CheckInFormData {
+  name: string;
+  email: string;
+  timeSlot: string;
+  courseType: 'group' | 'private';
+  trainerId?: string;
+  is1v2?: boolean;
+}
+
