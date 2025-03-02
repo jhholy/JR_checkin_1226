@@ -1,5 +1,6 @@
 import React from 'react';
-import { TrainerType } from '../../types/database';
+import { useTrainers } from '../../hooks/useTrainers';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 interface Props {
   trainerId: string;
@@ -16,16 +17,8 @@ export default function PrivateClassFields({
   loading,
   onChange
 }: Props) {
-  // 教练列表
-  const trainers = [
-    { id: '71f17e43-8463-4e8c-a2fe-d3ab9b0198ef', name: 'Big', type: 'senior' as TrainerType },
-    { id: '7a029490-917d-47d7-b222-b81f634d46ec', name: 'JR', type: 'jr' as TrainerType },
-    { id: '5e9a09da-01ed-4792-b661-d44562aa3393', name: 'Da', type: 'senior' as TrainerType },
-    { id: 'cfa14eba-75d8-4e46-a764-c486ccdaa187', name: 'Ming', type: 'senior' as TrainerType },
-    { id: '08b82c89-770c-4392-bd17-75a62fcc9eb1', name: 'Bas', type: 'senior' as TrainerType },
-    { id: 'a4fec13a-5ae2-48ac-a675-815940fbbf5f', name: 'Sumay', type: 'senior' as TrainerType },
-    { id: '48dec2e7-1c37-4a90-b9d6-b252e1b91a14', name: 'First', type: 'senior' as TrainerType }
-  ];
+  // 使用钩子获取教练列表
+  const { trainers, loading: trainersLoading, error: trainersError } = useTrainers();
 
   // 私教课时间段
   const timeSlots = [
@@ -53,15 +46,22 @@ export default function PrivateClassFields({
           onChange={(e) => onChange('trainerId', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
           required
-          disabled={loading}
+          disabled={loading || trainersLoading}
         >
           <option value="">请选择教练 Select trainer</option>
-          {trainers.map(trainer => (
-            <option key={trainer.id} value={trainer.id}>
-              {trainer.name} ({trainer.type})
-            </option>
-          ))}
+          {trainersLoading ? (
+            <option value="" disabled>加载中... Loading...</option>
+          ) : trainersError ? (
+            <option value="" disabled>加载失败 Error loading trainers</option>
+          ) : (
+            trainers.map(trainer => (
+              <option key={trainer.id} value={trainer.id}>
+                {trainer.name} ({trainer.type === 'senior' ? '高级教练' : 'JR教练'})
+              </option>
+            ))
+          )}
         </select>
+        {trainersLoading && <div className="mt-1"><LoadingSpinner size="sm" /></div>}
       </div>
 
       {/* 时段选择 */}
@@ -99,11 +99,6 @@ export default function PrivateClassFields({
             1对2课程 1-on-2 Class
           </span>
         </label>
-        <p className="mt-1 text-sm text-gray-500">
-          1对2课程需要线下额外收费
-          <br />
-          Additional fee required for 1-on-2 class
-        </p>
       </div>
     </div>
   );

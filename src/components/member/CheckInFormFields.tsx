@@ -56,11 +56,6 @@ export default function CheckInFormFields({
           required
           disabled={loading}
         />
-        <p className="mt-1 text-sm text-gray-500">
-          邮箱用于身份验证，所有会员必填
-          <br />
-          Email is required for all members
-        </p>
       </div>
 
       {showTimeSlot && (
