@@ -1,7 +1,8 @@
 import React from 'react';
 import { Member, MembershipCard } from '../../types/database';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate } from '../../utils/formatters';
 import { User, CreditCard, Calendar } from 'lucide-react';
+import { getFullCardName } from '../../utils/membership/formatters';
 
 interface Props {
   member: Member & { membership_cards?: MembershipCard[] };
@@ -9,34 +10,9 @@ interface Props {
 
 export default function MemberProfile({ member }: Props) {
   const getCardDetails = (card: MembershipCard) => {
-    let type = '';
-    switch (card.card_subtype) {
-      case 'single_class':
-        type = '团课单次卡';
-        break;
-      case 'two_classes':
-        type = '团课两次卡';
-        break;
-      case 'ten_classes':
-        type = '团课十次卡';
-        break;
-      case 'single_monthly':
-        type = '团课单次月卡';
-        break;
-      case 'double_monthly':
-        type = '团课双次月卡';
-        break;
-      case 'single_private':
-        type = '单次私教卡';
-        break;
-      case 'ten_private':
-        type = '十次私教卡';
-        break;
-      default:
-        type = card.card_subtype;
-    }
+    const cardName = getFullCardName(card.card_type, card.card_category, card.card_subtype);
 
-    const remaining = card.card_type === 'private' 
+    const remaining = card.card_type === '私教课' 
       ? card.remaining_private_sessions 
       : card.remaining_group_sessions;
 
@@ -46,7 +22,7 @@ export default function MemberProfile({ member }: Props) {
           <div className="flex items-center space-x-3">
             <CreditCard className="w-5 h-5 text-[#4285F4]" />
             <div>
-              <h4 className="font-medium text-gray-900">{type}</h4>
+              <h4 className="font-medium text-gray-900">{cardName}</h4>
               {card.valid_until && (
                 <p className="text-sm text-gray-500">
                   到期日期: {formatDate(card.valid_until)}

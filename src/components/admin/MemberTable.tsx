@@ -2,6 +2,8 @@ import React from 'react';
 import { Member, MembershipCard } from '../../types/database';
 import { formatDate, isWithinDays, isPast } from '../../utils/dateUtils';
 import { Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { getFullCardName } from '../../utils/membership/formatters';
+import Pagination from '../common/Pagination';
 
 interface Props {
   members: (Member & { membership_cards?: MembershipCard[] })[];
@@ -81,33 +83,7 @@ export default function MemberTable({
     if (!member.membership_cards?.length) return '-';
     
     return member.membership_cards.map(card => {
-      let type = '';
-      switch (card.card_subtype) {
-        case 'single_class':
-          type = '团课单次卡';
-          break;
-        case 'two_classes':
-          type = '团课两次卡';
-          break;
-        case 'ten_classes':
-          type = '团课十次卡';
-          break;
-        case 'single_monthly':
-          type = '团课单次月卡';
-          break;
-        case 'double_monthly':
-          type = '团课双次月卡';
-          break;
-        case 'single_private':
-          type = '单次私教卡';
-          break;
-        case 'ten_private':
-          type = '十次私教卡';
-          break;
-        default:
-          type = card.card_subtype;
-      }
-      return type;
+      return getFullCardName(card.card_type, card.card_category, card.card_subtype);
     }).join(', ');
   };
 
@@ -115,13 +91,13 @@ export default function MemberTable({
     if (!member.membership_cards?.length) return '-';
 
     const classCards = member.membership_cards.filter(card => 
-      card.card_type === 'class' || card.card_type === 'private'
+      card.card_type === '团课' || card.card_type === '私教课'
     );
 
     if (!classCards.length) return 'N/A';
 
     return classCards.map(card => {
-      const remaining = card.card_type === 'private' 
+      const remaining = card.card_type === '私教课' 
         ? card.remaining_private_sessions 
         : card.remaining_group_sessions;
       
@@ -130,7 +106,7 @@ export default function MemberTable({
           key={card.id}
           className={`${(remaining || 0) <= 2 ? 'text-orange-600 font-medium' : ''}`}
         >
-          {card.card_type === 'private' ? '私教:' : '团课:'} {remaining || 0}
+          {card.card_type === '私教课' ? '私教:' : '团课:'} {remaining || 0}
         </span>
       );
     }).reduce((prev, curr) => [prev, ', ', curr]);

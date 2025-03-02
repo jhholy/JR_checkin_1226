@@ -1,6 +1,7 @@
 import React from 'react';
 import { Member, MembershipCard } from '../../types/database';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate } from '../../utils/formatters';
+import { getFullCardName } from '../../utils/membership/formatters';
 import { useCheckInRecords } from '../../hooks/useCheckInRecords';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
@@ -13,34 +14,9 @@ export default function MemberDetails({ member }: Props) {
   const { records, loading, error } = useCheckInRecords(member.id, 50);
 
   const getCardDetails = (card: MembershipCard) => {
-    let type = '';
-    switch (card.card_subtype) {
-      case 'single_class':
-        type = '团课单次卡 Single Class';
-        break;
-      case 'two_classes':
-        type = '团课两次卡 Two Classes';
-        break;
-      case 'ten_classes':
-        type = '团课十次卡 Ten Classes';
-        break;
-      case 'single_monthly':
-        type = '团课单次月卡 Single Monthly';
-        break;
-      case 'double_monthly':
-        type = '团课双次月卡 Double Monthly';
-        break;
-      case 'single_private':
-        type = '单次私教卡 Single Private';
-        break;
-      case 'ten_private':
-        type = '十次私教卡 Ten Private';
-        break;
-      default:
-        type = card.card_subtype;
-    }
+    const cardName = getFullCardName(card.card_type, card.card_category, card.card_subtype);
 
-    const remaining = card.card_type === 'private' 
+    const remaining = card.card_type === '私教课' 
       ? card.remaining_private_sessions 
       : card.remaining_group_sessions;
 
@@ -48,7 +24,7 @@ export default function MemberDetails({ member }: Props) {
       <div key={card.id} className="border-b border-gray-200 py-4 last:border-0">
         <div className="flex justify-between items-center">
           <div>
-            <h4 className="font-medium text-gray-900">{type}</h4>
+            <h4 className="font-medium text-gray-900">{cardName}</h4>
             {card.valid_until && (
               <p className="text-sm text-gray-500">
                 到期日期: {formatDate(card.valid_until)}
