@@ -8,6 +8,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import CheckInResult from '../components/member/CheckInResult';
 import NetworkError from '../components/common/NetworkError';
+import { CheckInResult as CheckInResultType } from '../types/checkIn';
 
 interface CheckInStatus {
   success: boolean;
@@ -23,7 +24,7 @@ export default function PrivateClassCheckIn() {
   const [checkInStatus, setCheckInStatus] = useState<CheckInStatus | null>(null);
   const [networkError, setNetworkError] = useState(false);
 
-  const handleSubmit = async (formData: CheckInFormData) => {
+  const handleSubmit = async (formData: CheckInFormData): Promise<CheckInResultType> => {
     try {
       const result = await submitCheckIn({
         ...formData,
@@ -37,12 +38,20 @@ export default function PrivateClassCheckIn() {
           navigate('/');
         }, 3000);
       }
+      
+      return result;
     } catch (err) {
       if (err instanceof Error && 
           (err.message.includes('Failed to fetch') || 
            err.message.includes('Network error'))) {
         setNetworkError(true);
       }
+      
+      // 返回一个错误结果
+      return {
+        success: false,
+        message: err instanceof Error ? err.message : '签到失败，请重试。Check-in failed, please try again.'
+      };
     }
   };
 
