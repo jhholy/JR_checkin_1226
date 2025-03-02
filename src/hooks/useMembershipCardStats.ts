@@ -32,16 +32,50 @@ export const useMembershipCardStats = () => {
           // 根据卡类型、类别和子类型生成标签
           if (card.card_type === 'group') {
             if (card.card_category === 'session') {
-              cardTypeLabel = `团课${card.card_subtype}`;
+              // 团课课时卡：单次卡、两次卡、10次卡
+              if (card.card_subtype === 'single_session') {
+                cardTypeLabel = '团课单次卡';
+              } else if (card.card_subtype === 'two_sessions') {
+                cardTypeLabel = '团课two_sessions';
+              } else if (card.card_subtype === '10_sessions') {
+                cardTypeLabel = '团课10_sessions';
+              } else if (card.card_subtype === 'ten_sessions') {
+                cardTypeLabel = '团课ten_sessions';
+              } else if (card.card_subtype === 'ten_classes') {
+                cardTypeLabel = '团课ten_classes';
+              } else {
+                cardTypeLabel = `团课${card.card_subtype}`;
+              }
             } else if (card.card_category === 'monthly') {
-              cardTypeLabel = `团课${card.card_subtype}`;
+              // 团课月卡：单次月卡、双次月卡
+              if (card.card_subtype === 'single_monthly') {
+                cardTypeLabel = '团课single_monthly';
+              } else if (card.card_subtype === 'double_monthly') {
+                cardTypeLabel = '团课double_monthly';
+              } else {
+                cardTypeLabel = `团课${card.card_subtype}`;
+              }
+            } else {
+              // 其他团课卡
+              cardTypeLabel = `团课卡`;
             }
           } else if (card.card_type === 'private') {
-            cardTypeLabel = `私教${card.card_subtype}`;
-          }
-          
-          // 如果标签为空，使用默认标签
-          if (!cardTypeLabel) {
+            // 私教课：单次卡、10次卡
+            if (card.card_subtype === 'single_session') {
+              cardTypeLabel = '私教卡';
+            } else if (card.card_subtype === '10_sessions') {
+              cardTypeLabel = '私教10_sessions';
+            } else if (card.card_subtype === 'ten_sessions') {
+              cardTypeLabel = '私教ten_sessions';
+            } else if (card.card_subtype === 'ten_private') {
+              cardTypeLabel = '私教ten_private';
+            } else if (card.card_subtype === 'ten_classes') {
+              cardTypeLabel = '私教ten_classes';
+            } else {
+              cardTypeLabel = `私教${card.card_subtype}`;
+            }
+          } else {
+            // 其他类型卡
             cardTypeLabel = `${card.card_type || '未知'}卡`;
           }
           
