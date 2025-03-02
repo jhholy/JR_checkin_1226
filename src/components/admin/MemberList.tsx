@@ -5,14 +5,12 @@ import EditMemberModal from './EditMemberModal';
 import { useMemberSearch } from '../../hooks/useMemberSearch';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
-import { supabase } from '../../lib/supabase';
-import { Trash2, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import AddMemberModal from './AddMemberModal';
 
 type Member = Database['public']['Tables']['members']['Row'];
 type CardType = Database['public']['Enums']['CardType'];
 type ExtendedCardType = CardType | 'no_card';
-type CardCategory = Database['public']['Enums']['CardCategory'];
 type CardSubtype = Database['public']['Enums']['CardSubtype'];
 
 // 卡类型和子类型的映射关系
@@ -42,7 +40,7 @@ export default function MemberList() {
   const [cardSubtypeFilter, setCardSubtypeFilter] = useState<CardSubtype | ''>('');
   const [expiryFilter, setExpiryFilter] = useState<'active' | 'upcoming' | 'expired' | 'low_classes' | ''>('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [_showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
@@ -246,7 +244,7 @@ export default function MemberList() {
       {isAddModalOpen && (
         <AddMemberModal
           onClose={() => setIsAddModalOpen(false)}
-          onAdd={(newMember) => {
+          onAdd={() => {
             setIsAddModalOpen(false);
             refreshMemberList(); // 添加会员后也刷新列表
           }}
