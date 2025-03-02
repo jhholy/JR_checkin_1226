@@ -7,6 +7,8 @@ interface CheckInTrend {
   total: number;
   regular: number;
   extra: number;
+  groupClass: number;  // 团课签到数
+  privateClass: number; // 私教签到数
 }
 
 export const useCheckInTrends = () => {
@@ -44,6 +46,9 @@ export const useCheckInTrends = () => {
             total: dayCheckins.length,
             regular: dayCheckins.filter(check => !check.is_extra).length,
             extra: dayCheckins.filter(check => check.is_extra).length,
+            // 按课程类型分类
+            groupClass: dayCheckins.filter(check => check.course_type === 'group').length,
+            privateClass: dayCheckins.filter(check => check.course_type === 'private').length,
           });
         }
 

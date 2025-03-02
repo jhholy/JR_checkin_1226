@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
   ArcElement,
+  BarElement,
   Filler
 } from 'chart.js';
 
@@ -17,9 +18,18 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement,
   Filler
 );
+
+// Set global defaults
+ChartJS.defaults.font.family = 'system-ui, -apple-system, sans-serif';
+ChartJS.defaults.color = '#6B7280';
+ChartJS.defaults.borderColor = '#E5E7EB';
+
+// Export configured ChartJS
+export { ChartJS };
