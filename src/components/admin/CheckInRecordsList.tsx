@@ -71,6 +71,8 @@ export default function CheckInRecordsList() {
       ? `${filters.startDate} - ${filters.endDate}`
       : '所有时间';
     
+    const totalPrivateClasses = stats.oneOnOne + stats.oneOnTwo;
+    
     return (
       <div className="bg-white p-6 rounded-lg shadow mb-4">
         <p className="text-gray-600 flex items-center space-x-1 text-lg">
@@ -83,9 +85,11 @@ export default function CheckInRecordsList() {
           <span className="font-medium text-green-600">{stats.regular}</span>
           <span>次正常签到，</span>
           <span className="font-medium text-red-600">{stats.extra}</span>
-          <span>次额外签到，</span>
-          <span className="font-medium text-purple-600">{stats.private}</span>
-          <span>次私教课。</span>
+          <span>次额外签到；</span>
+          <span className="font-medium text-purple-600">{totalPrivateClasses}</span>
+          <span>次私教课，</span>
+          <span className="font-medium text-blue-600">{stats.total - totalPrivateClasses}</span>
+          <span>次团课。</span>
         </p>
       </div>
     );
@@ -148,13 +152,13 @@ export default function CheckInRecordsList() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
             >
               <option value="">全部 All</option>
-              <option value="jr">JR</option>
-              <option value="da">Da</option>
-              <option value="ming">Ming</option>
-              <option value="big">Big</option>
-              <option value="bas">Bas</option>
-              <option value="sumay">Sumay</option>
-              <option value="first">First</option>
+              <option value="71f17e43-8463-4e8c-a2fe-d3ab9b0198ef">Big</option>
+              <option value="7a029490-917d-47d7-b222-b81f634d46ec">JR</option>
+              <option value="5e9a09da-01ed-4792-b661-d44562aa3393">Da</option>
+              <option value="cfa14eba-75d8-4e46-a764-c486ccdaa187">Ming</option>
+              <option value="08b82c89-770c-4392-bd17-75a62fcc9eb1">Bas</option>
+              <option value="a4fec13a-5ae2-48ac-a675-815940fbbf5f">Sumay</option>
+              <option value="48dec2e7-1c37-4a90-b9d6-b252e1b91a14">First</option>
             </select>
           </div>
 
@@ -234,7 +238,7 @@ export default function CheckInRecordsList() {
                       邮箱
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      课程类型
+                      上课时段 Time Slot
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       课程性质
@@ -260,7 +264,7 @@ export default function CheckInRecordsList() {
                         {record.members?.email || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {record.class_type === 'morning' ? '早课' : '晚课'}
+                        {record.time_slot || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

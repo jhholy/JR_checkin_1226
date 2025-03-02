@@ -82,7 +82,7 @@ graph TD
 #### 场景三：老会员额外签到
 1. 输入姓名和邮箱
 2. 系统验证身份
-3. 发现会员卡无效/课时用完/超出限制
+3. 发现会员卡过期/课时用完/超出限制/无有效会员卡
 4. 记录额外签到并提醒
 
 ## 数据统计功能
@@ -159,12 +159,12 @@ graph TD
   - 按教练统计
   - 按月份统计
   - 按课程类型（1对1/1对2）统计
-- **课时费计算**：
+- **课时费计算**：（暂不计算）
   - 根据教练等级和课程类型自动计算
   - 支持自定义时间段统计
 - **报表功能**：
   - 月度课时统计
-  - 课时费用统计
+  - 课时费用统计（暂不计算）
   - 自定义时段统计
 
 ---
@@ -263,5 +263,121 @@ graph TD
 - **多语言支持**：主页中英双语对照。
 - **友好提示**：清晰的错误提示和操作反馈。
 - **简洁流程**：减少操作步骤，提升用户体验。
+
+## 函数文档
+
+### 签到处理函数
+
+#### handle_check_in
+```sql
+handle_check_in(
+  p_member_id UUID,       -- 会员ID
+  p_name TEXT,            -- 会员姓名
+  p_email TEXT,           -- 会员邮箱
+  p_card_id UUID,         -- 会员卡ID（可为NULL）
+  p_class_type TEXT,      -- 课程类型（morning/evening/private）
+  p_check_in_date DATE,   -- 签到日期
+  p_trainer_id UUID DEFAULT NULL,  -- 教练ID（私教课必填）
+  p_is_1v2 BOOLEAN DEFAULT FALSE   -- 是否为1对2私教课
+) RETURNS JSONB
+```
+
+**功能说明**：
+处理会员签到流程，包括新会员自动建档、老会员签到验证、会员卡有效性检查、签到记录创建等。
+
+**参数说明**：
+- `p_member_id`: 会员的唯一标识符
+- `p_name`: 会员姓名，用于显示和识别
+- `p_email`: 会员邮箱，用于身份验证和通知
+- `p_card_id`: 会员卡ID，如果会员没有卡或不使用卡签到，可为NULL
+- `p_class_type`: 课程类型，可选值为'morning'（早课）、'evening'（晚课）或'private'（私教课）
+- `p_check_in_date`: 签到日期，通常为当天日期
+- `p_trainer_id`: 教练ID，仅私教课需要指定
+- `p_is_1v2`: 是否为1对2私教课，仅私教课适用
+
+**返回值**：
+返回一个JSON对象，包含以下字段：
+- `success`: 布尔值，表示签到是否成功
+- `message`: 文本消息，说明签到结果
+- `isExtra`: 布尔值，表示是否为额外签到
+- `checkInId`: 签到记录的唯一标识符（仅在签到成功时返回）
+- `isDuplicate`: 布尔值，表示是否为重复签到（仅在重复签到时返回）
+- `error`: 错误信息（仅在签到失败时返回）
+
+**处理流程**：
+1. 验证课程类型是否有效
+2. 检查会员是否存在，不存在则创建新会员
+3. 检查是否重复签到
+4. 验证会员卡有效性（如果提供了会员卡ID）
+5. 创建签到记录
+6. 更新会员信息（额外签到次数和最后签到日期）
+7. 返回签到结果
+
+### 会员卡验证函数
+
+#### check_card_validity
+```sql
+check_card_validity(
+  p_card_id UUID,        -- 会员卡ID
+  p_member_id UUID,      -- 会员ID
+  p_class_type TEXT,     -- 课程类型
+  p_check_in_date DATE   -- 签到日期
+) RETURNS BOOLEAN
+```
+
+**功能说明**：
+检查会员卡是否有效，包括会员卡所有权验证、类型匹配检查、有效期检查和剩余课时检查。
+
+**参数说明**：
+- `p_card_id`: 会员卡的唯一标识符
+- `p_member_id`: 会员的唯一标识符
+- `p_class_type`: 课程类型，用于检查会员卡类型是否匹配
+- `p_check_in_date`: 签到日期，用于检查会员卡是否在有效期内
+
+**返回值**：
+返回一个布尔值，表示会员卡是否有效：
+- `TRUE`: 会员卡有效
+- `FALSE`: 会员卡无效
+
+**验证规则**：
+1. 检查会员卡是否存在
+2. 检查会员卡是否属于指定会员
+3. 检查会员卡类型是否匹配课程类型
+4. 检查会员卡是否在有效期内
+5. 检查会员卡是否有足够的剩余课时
+
+### 其他辅助函数
+
+#### check_member_exists
+```sql
+check_member_exists(p_member_id UUID) RETURNS BOOLEAN
+```
+
+**功能说明**：
+检查指定ID的会员是否存在。
+
+#### check_duplicate_check_in
+```sql
+check_duplicate_check_in(
+  p_member_id UUID,
+  p_check_in_date DATE,
+  p_class_type TEXT
+) RETURNS BOOLEAN
+```
+
+**功能说明**：
+检查会员在指定日期和课程类型下是否已经签到过，防止重复签到。
+
+#### check_monthly_card_daily_limit
+```sql
+check_monthly_card_daily_limit(
+  p_member_id UUID,
+  p_card_id UUID,
+  p_check_in_date DATE
+) RETURNS BOOLEAN
+```
+
+**功能说明**：
+检查会员的月卡在指定日期是否已达到每日签到次数限制。
 
 --By Hongyi Ji hongyiji224@gmail.com

@@ -7,9 +7,9 @@ import { normalizeNameForComparison } from '../utils/memberUtils';
 
 interface SearchParams {
   searchTerm?: string;
-  cardType?: CardType | '';
+  cardType?: CardType | 'no_card' | '';
   cardSubtype?: CardSubtype | '';
-  expiryStatus?: 'upcoming' | 'expired' | '';
+  expiryStatus?: 'active' | 'upcoming' | 'expired' | '';
   page?: number;
   pageSize?: number;
 }
@@ -46,6 +46,7 @@ export function useMemberSearch(defaultPageSize: number = 10) {
       const start = (page - 1) * pageSize;
       const end = start + pageSize - 1;
 
+      // 构建基础查询
       let query = supabase
         .from('members')
         .select(`
@@ -61,18 +62,29 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           )
         `, { count: 'exact' });
 
-      // 在数据库层面进行过滤
-      if (params.cardType) {
-        query = query.eq('membership_cards.card_type', params.cardType);
-      }
-
-      if (params.cardSubtype) {
-        query = query.eq('membership_cards.card_subtype', params.cardSubtype);
-      }
-
+      // 处理搜索词
       if (params.searchTerm) {
         const searchTerm = params.searchTerm.trim();
         query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      }
+
+      // 处理卡类型和子类型过滤
+      if (params.cardType || params.cardSubtype) {
+        if (params.cardType === 'no_card') {
+          // 筛选无卡会员
+          query = query.is('membership_cards', null);
+        } else {
+          // 筛选有特定卡类型的会员
+          query = query.not('membership_cards', 'is', null);
+          
+          if (params.cardType) {
+            query = query.eq('membership_cards.card_type', params.cardType);
+          }
+          
+          if (params.cardSubtype) {
+            query = query.eq('membership_cards.card_subtype', params.cardSubtype);
+          }
+        }
       }
 
       // 获取过滤后的会员数据
@@ -99,22 +111,18 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           const hasValidCard = member.membership_cards.some(card => {
             if (!card.valid_until) return false;
             const validUntil = new Date(card.valid_until);
+            
             if (params.expiryStatus === 'expired') {
               return validUntil < today;
             } else if (params.expiryStatus === 'upcoming') {
               return validUntil > today && validUntil < threeDaysFromNow;
+            } else if (params.expiryStatus === 'active') {
+              return validUntil >= threeDaysFromNow;
             }
             return false;
           });
           return hasValidCard;
         });
-      }
-
-      // 如果有卡类型或子类型筛选,需要过滤掉没有会员卡的会员
-      if (params.cardType || params.cardSubtype) {
-        filteredData = filteredData.filter(member => 
-          member.membership_cards && member.membership_cards.length > 0
-        );
       }
 
       // 更新缓存和状态
@@ -253,14 +261,19 @@ export function useMemberSearch(defaultPageSize: number = 10) {
         .eq('id', memberId);
 
       if (error) throw error;
-      
-      memberCache.clear();
-      await searchMembers({ page: result.currentPage });
-      
+
+      // 更新本地状态
+      setResult(prevResult => ({
+        ...prevResult,
+        members: prevResult.members.map(member =>
+          member.id === memberId ? { ...member, ...updates } : member
+        )
+      }));
+
       return { success: true };
-    } catch (err) {
-      console.error('Update error:', err);
-      throw new Error('更新失败，请重试。Update failed, please try again.');
+    } catch (error) {
+      console.error('Update error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -271,7 +284,10 @@ export function useMemberSearch(defaultPageSize: number = 10) {
   }, []);
 
   return {
-    ...result,
+    members: result.members,
+    totalCount: result.totalCount,
+    currentPage: result.currentPage,
+    totalPages: result.totalPages,
     loading,
     error,
     searchMembers,

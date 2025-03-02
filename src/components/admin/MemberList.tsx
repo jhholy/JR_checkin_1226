@@ -11,16 +11,36 @@ import AddMemberModal from './AddMemberModal';
 
 type Member = Database['public']['Tables']['members']['Row'];
 type CardType = Database['public']['Enums']['CardType'];
+type ExtendedCardType = CardType | 'no_card';
 type CardCategory = Database['public']['Enums']['CardCategory'];
 type CardSubtype = Database['public']['Enums']['CardSubtype'];
+
+// 卡类型和子类型的映射关系
+const cardTypeToSubtypes: Record<ExtendedCardType, CardSubtype[]> = {
+  'monthly': ['single_monthly', 'double_monthly'],
+  'class': ['single_class', 'two_classes', 'ten_classes'],
+  'private': ['single_private', 'ten_private'],
+  'no_card': []
+};
+
+// 卡子类型的显示名称
+const cardSubtypeLabels: Record<CardSubtype, string> = {
+  'single_monthly': '团课单次月卡 Single Monthly',
+  'double_monthly': '团课双次月卡 Double Monthly',
+  'single_class': '团课单次卡 Single Class',
+  'two_classes': '团课两次卡 Two Classes',
+  'ten_classes': '团课十次卡 Ten Classes',
+  'single_private': '私教单次卡 Single Private',
+  'ten_private': '私教十次卡 Ten Private'
+};
 
 const PAGE_SIZE = 10;
 
 export default function MemberList() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [cardTypeFilter, setCardTypeFilter] = useState<CardType | ''>('');
+  const [cardTypeFilter, setCardTypeFilter] = useState<ExtendedCardType | ''>('');
   const [cardSubtypeFilter, setCardSubtypeFilter] = useState<CardSubtype | ''>('');
-  const [expiryFilter, setExpiryFilter] = useState<'upcoming' | 'expired' | ''>('');
+  const [expiryFilter, setExpiryFilter] = useState<'active' | 'upcoming' | 'expired' | ''>('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -131,10 +151,15 @@ export default function MemberList() {
             </label>
             <select
               value={cardTypeFilter}
-              onChange={(e) => setCardTypeFilter(e.target.value as CardType | '')}
+              onChange={(e) => {
+                const newType = e.target.value as ExtendedCardType | '';
+                setCardTypeFilter(newType);
+                setCardSubtypeFilter(''); // 重置子类型
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="">全部 All</option>
+              <option value="no_card">无会员卡 No Card</option>
               <option value="class">团课次卡 Class</option>
               <option value="monthly">团课月卡 Monthly</option>
               <option value="private">私教卡 Private</option>
@@ -149,15 +174,14 @@ export default function MemberList() {
               value={cardSubtypeFilter}
               onChange={(e) => setCardSubtypeFilter(e.target.value as CardSubtype | '')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              disabled={cardTypeFilter === 'no_card' || !cardTypeFilter}
             >
-              <option value="">全部 All</option>
-              <option value="single_class">团课单次卡 Single Class</option>
-              <option value="two_classes">团课两次卡 Two Classes</option>
-              <option value="ten_classes">团课十次卡 Ten Classes</option>
-              <option value="single_monthly">团课单次月卡 Single Monthly</option>
-              <option value="double_monthly">团课双次月卡 Double Monthly</option>
-              <option value="single_private">单次私教卡 Single Private</option>
-              <option value="ten_private">十次私教卡 Ten Private</option>
+              <option value="">全部子类型 All subtypes</option>
+              {cardTypeFilter && cardTypeFilter !== 'no_card' && cardTypeToSubtypes[cardTypeFilter].map(subtype => (
+                <option key={subtype} value={subtype}>
+                  {cardSubtypeLabels[subtype]}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -167,11 +191,12 @@ export default function MemberList() {
             </label>
             <select
               value={expiryFilter}
-              onChange={(e) => setExpiryFilter(e.target.value as 'upcoming' | 'expired' | '')}
+              onChange={(e) => setExpiryFilter(e.target.value as 'active' | 'upcoming' | 'expired' | '')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
-              <option value="">全部 All</option>
-              <option value="upcoming">即将到期 Expiring Soon</option>
+              <option value="">全部状态 All status</option>
+              <option value="active">正常 Active</option>
+              <option value="upcoming">即将到期 Expiring soon</option>
               <option value="expired">已过期 Expired</option>
             </select>
           </div>
