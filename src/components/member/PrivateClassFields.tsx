@@ -56,7 +56,7 @@ export default function PrivateClassFields({
           ) : (
             trainers.map(trainer => (
               <option key={trainer.id} value={trainer.id}>
-                {trainer.name} ({trainer.type === 'senior' ? '高级教练' : 'JR教练'})
+                {trainer.name} ({trainer.type === 'senior' ? '高级教练 Senior Trainer' : 'JR教练'})
               </option>
             ))
           )}
