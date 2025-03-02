@@ -36,7 +36,7 @@ export const useTrainerWorkload = () => {
         const { data: checkIns, error: checkInsError } = await supabase
           .from('check_ins')
           .select('*')
-          .eq('course_type', 'private')
+          .eq('is_private', true)
           .gte('check_in_date', monthStart.toISOString())
           .lte('check_in_date', monthEnd.toISOString());
         

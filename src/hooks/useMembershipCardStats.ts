@@ -19,8 +19,7 @@ export const useMembershipCardStats = () => {
         // 获取会员卡类型分布
         const { data, error: fetchError } = await supabase
           .from('membership_cards')
-          .select('card_type, card_category, card_subtype')
-          .eq('is_active', true);
+          .select('card_type, card_category, card_subtype');
 
         if (fetchError) throw fetchError;
 
