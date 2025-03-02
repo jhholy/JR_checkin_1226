@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, CalendarCheck, AlertCircle } from 'lucide-react';
+import { Shield, Users, CalendarCheck, AlertCircle, Home } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import AdminLogin from '../components/AdminLogin';
 import NetworkError from '../components/common/NetworkError';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { supabase } from '../lib/supabase';
+import { Link } from 'react-router-dom';
 
 // 直接导入所有组件
 import MemberList from '../components/admin/MemberList';
@@ -139,6 +140,17 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center space-x-2">
+          <Shield className="w-8 h-8 text-[#4285F4]" />
+          <span className="text-xl font-medium">管理后台</span>
+        </div>
+        <Link to="/" className="flex items-center space-x-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">
+          <Home className="w-5 h-5" />
+          <span>返回主页</span>
+        </Link>
+      </div>
+      
       <div className="flex space-x-4 mb-8">
         {tabs.map((tab) => (
           <button
