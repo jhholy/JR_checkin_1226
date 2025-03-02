@@ -47,6 +47,47 @@ CardSubtype:
   | "ten_private";
 ```
 
+### readme.md中定义的会员卡类型
+
+在项目文档 `docs/readme.md` 中定义的会员卡类型：
+
+```
+- **card_type**: 课程类型
+  - 团课
+  - 私教课
+- **card_category**: 卡种类（仅团课适用）
+  - 课时卡
+  - 月卡
+- **card_subtype**: 具体类型
+  - 团课课时卡：单次卡、两次卡、10次卡
+  - 团课月卡：单次月卡（每天最多1次）、双次月卡（每天最多2次）
+  - 私教课：单次卡、10次卡
+```
+
+## 与readme.md的对比分析
+
+对比数据库中的实际数据与readme.md中的定义，发现以下不一致：
+
+1. **card_type不一致**：
+   - readme.md定义：`团课`、`私教课`
+   - 数据库实际：`团课`、`私教`、`class`、`group`、`monthly`、`private`
+   - 代码定义：`class`、`monthly`、`private`
+
+2. **card_category不一致**：
+   - readme.md定义：`课时卡`、`月卡`（仅团课适用）
+   - 数据库实际：`课时卡`、`月卡`、`group`、`private`、`session`、`sessions`、空值
+   - 代码定义：`group`、`private`
+
+3. **card_subtype不一致**：
+   - readme.md定义：`单次卡`、`两次卡`、`10次卡`、`单次月卡`、`双次月卡`
+   - 数据库实际：`单次卡`、`10次卡`、`单次月卡`、`双次月卡`、`single_class`、`two_classes`、`ten_classes`、`10_sessions`、`ten_sessions`、`standard`、`single_monthly`、`double_monthly`、`ten_private`
+   - 代码定义：`single_class`、`two_classes`、`ten_classes`、`single_monthly`、`double_monthly`、`single_private`、`ten_private`
+
+4. **遗漏的类型**：
+   - `two_sessions`在数据库中存在，但在代码和readme.md中均未定义
+   - `standard`在数据库中存在，但在代码和readme.md中均未定义
+   - `single_private`在代码中定义，但在数据库和readme.md中未出现
+
 ## 问题分析
 
 1. **中英文混用**：数据库中同时存在中文和英文的卡类型，如 `团课` 和 `class`，`私教` 和 `private`。
@@ -58,6 +99,10 @@ CardSubtype:
 4. **空值问题**：部分记录的 `card_category` 为空，不符合完整的分类体系。
 
 5. **命名不规范**：存在 `10_sessions` 和 `ten_sessions` 这样的命名不一致。
+
+6. **文档与代码不一致**：readme.md中的定义与代码中的枚举定义不匹配。
+
+7. **实际数据与定义不符**：数据库中存在的类型既不符合readme.md的定义，也不完全符合代码中的枚举定义。
 
 ## 解决方案
 
@@ -85,7 +130,8 @@ CardSubtype:
    - 在新增会员卡时强制使用标准化的类型
 
 4. **文档更新**：
-   - 更新系统文档，明确说明会员卡的分类体系
+   - 更新readme.md，使其与代码中的枚举定义保持一致
+   - 明确说明会员卡的分类体系
    - 为开发人员提供清晰的类型使用指南
 
 ## 执行计划
@@ -93,5 +139,6 @@ CardSubtype:
 1. 在测试环境中执行标准化脚本
 2. 验证系统功能是否正常
 3. 更新前端代码以适应标准化的类型
-4. 在生产环境中执行标准化脚本
-5. 监控系统运行情况，确保没有异常 
+4. 更新readme.md文档，使其与代码定义一致
+5. 在生产环境中执行标准化脚本
+6. 监控系统运行情况，确保没有异常 
