@@ -6,6 +6,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import Pagination from '../common/Pagination';
 import DateRangePicker from '../common/DateRangePicker';
+import { useTrainers } from '../../hooks/useTrainers';
 
 export default function CheckInRecordsList() {
   const [filters, setFilters] = useState({
@@ -27,6 +28,12 @@ export default function CheckInRecordsList() {
     fetchRecords,
     stats
   } = useCheckInRecordsPaginated(10);
+
+  const {
+    trainers,
+    loading: trainersLoading,
+    error: trainersError
+  } = useTrainers();
 
   const handleSearch = async (page = 1) => {
     await fetchRecords({
@@ -104,14 +111,14 @@ export default function CheckInRecordsList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              会员姓名 Member Name
+              会员姓名/邮箱 Member Name/Email
             </label>
             <input
               type="text"
               value={filters.memberName}
               onChange={(e) => setFilters(prev => ({ ...prev, memberName: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
-              placeholder="输入会员姓名..."
+              placeholder="输入会员姓名或邮箱..."
             />
           </div>
 
@@ -152,13 +159,17 @@ export default function CheckInRecordsList() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
             >
               <option value="">全部 All</option>
-              <option value="71f17e43-8463-4e8c-a2fe-d3ab9b0198ef">Big</option>
-              <option value="7a029490-917d-47d7-b222-b81f634d46ec">JR</option>
-              <option value="5e9a09da-01ed-4792-b661-d44562aa3393">Da</option>
-              <option value="cfa14eba-75d8-4e46-a764-c486ccdaa187">Ming</option>
-              <option value="08b82c89-770c-4392-bd17-75a62fcc9eb1">Bas</option>
-              <option value="a4fec13a-5ae2-48ac-a675-815940fbbf5f">Sumay</option>
-              <option value="48dec2e7-1c37-4a90-b9d6-b252e1b91a14">First</option>
+              {trainersLoading ? (
+                <option value="" disabled>加载中... Loading...</option>
+              ) : trainersError ? (
+                <option value="" disabled>加载失败 Error loading trainers</option>
+              ) : (
+                trainers.map(trainer => (
+                  <option key={trainer.id} value={trainer.id}>
+                    {trainer.name} ({trainer.type === 'senior' ? '高级教练' : 'JR教练'})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

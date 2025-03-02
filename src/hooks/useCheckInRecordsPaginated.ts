@@ -56,7 +56,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
           .select('id, members!inner(name)', { count: 'exact' });
 
         if (queryFilters.memberName) {
-          query = query.ilike('members.name', `%${queryFilters.memberName}%`);
+          query = query.or(`name.ilike.%${queryFilters.memberName}%,email.ilike.%${queryFilters.memberName}%`, { foreignTable: 'members' });
         }
         if (queryFilters.startDate) {
           query = query.gte('check_in_date', queryFilters.startDate);
@@ -155,7 +155,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         });
 
       if (memberName) {
-        query = query.ilike('members.name', `%${memberName}%`);
+        query = query.or(`name.ilike.%${memberName}%,email.ilike.%${memberName}%`, { foreignTable: 'members' });
       }
       if (startDate) {
         query = query.gte('check_in_date', startDate);

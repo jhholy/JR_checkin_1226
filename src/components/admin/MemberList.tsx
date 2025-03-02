@@ -86,6 +86,7 @@ export default function MemberList() {
 
   const handleEdit = (member: Member) => {
     setSelectedMember(member);
+    setIsEditModalOpen(true);
   };
 
   const handleDelete = async (memberId: string) => {
@@ -106,10 +107,16 @@ export default function MemberList() {
     try {
       await updateMember(memberId, updates);
       setSelectedMember(null);
+      setIsEditModalOpen(false);
     } catch (err) {
       console.error('Failed to update member:', err);
       throw err;
     }
+  };
+
+  // 添加刷新会员列表的方法
+  const refreshMemberList = () => {
+    handleSearch(currentPage);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -133,7 +140,7 @@ export default function MemberList() {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              姓名/微信名 Name/WeChat
+              姓名/邮箱 Name/Email
             </label>
             <input
               type="text"
@@ -141,7 +148,7 @@ export default function MemberList() {
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={handleKeyPress}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="搜索会员..."
+              placeholder="搜索会员姓名或邮箱..."
             />
           </div>
 
@@ -224,18 +231,24 @@ export default function MemberList() {
         onPageChange={handlePageChange}
       />
 
-      {selectedMember && (
+      {/* 会员编辑模态框 */}
+      {isEditModalOpen && selectedMember && (
         <EditMemberModal
           member={selectedMember}
-          onClose={() => setSelectedMember(null)}
+          onClose={() => setIsEditModalOpen(false)}
           onUpdate={handleUpdate}
+          refreshMemberList={refreshMemberList}
         />
       )}
 
+      {/* 添加会员模态框 */}
       {isAddModalOpen && (
         <AddMemberModal
-          isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
+          onAdd={(newMember) => {
+            setIsAddModalOpen(false);
+            refreshMemberList(); // 添加会员后也刷新列表
+          }}
         />
       )}
     </div>
