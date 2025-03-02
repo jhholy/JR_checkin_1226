@@ -4,7 +4,11 @@ import { signInAdmin } from '../utils/adminUtils';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
-export default function AdminLogin() {
+interface AdminLoginProps {
+  onSuccess?: () => void;
+}
+
+export default function AdminLogin({ onSuccess }: AdminLoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,7 +24,11 @@ export default function AdminLogin() {
     try {
       await signInAdmin(email, password);
       await retry();
-      navigate('/admin');
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/admin');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '登录失败，请重试。Login failed, please try again.');
     } finally {
