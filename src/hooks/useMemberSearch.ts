@@ -9,7 +9,7 @@ interface SearchParams {
   searchTerm?: string;
   cardType?: CardType | 'no_card' | '';
   cardSubtype?: CardSubtype | '';
-  expiryStatus?: 'active' | 'upcoming' | 'expired' | '';
+  expiryStatus?: 'active' | 'upcoming' | 'expired' | 'low_classes' | '';
   page?: number;
   pageSize?: number;
 }
@@ -109,6 +109,10 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           }
 
           const hasValidCard = member.membership_cards.some(card => {
+            if (params.expiryStatus === 'low_classes') {
+              return card.card_type === 'class' && (card.remaining_group_sessions || 0) <= 2;
+            }
+            
             if (!card.valid_until) return false;
             const validUntil = new Date(card.valid_until);
             

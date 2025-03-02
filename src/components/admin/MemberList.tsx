@@ -40,7 +40,7 @@ export default function MemberList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [cardTypeFilter, setCardTypeFilter] = useState<ExtendedCardType | ''>('');
   const [cardSubtypeFilter, setCardSubtypeFilter] = useState<CardSubtype | ''>('');
-  const [expiryFilter, setExpiryFilter] = useState<'active' | 'upcoming' | 'expired' | ''>('');
+  const [expiryFilter, setExpiryFilter] = useState<'active' | 'upcoming' | 'expired' | 'low_classes' | ''>('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -198,13 +198,14 @@ export default function MemberList() {
             </label>
             <select
               value={expiryFilter}
-              onChange={(e) => setExpiryFilter(e.target.value as 'active' | 'upcoming' | 'expired' | '')}
+              onChange={(e) => setExpiryFilter(e.target.value as 'active' | 'upcoming' | 'expired' | 'low_classes' | '')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="">全部状态 All status</option>
               <option value="active">正常 Active</option>
               <option value="upcoming">即将到期 Expiring soon</option>
               <option value="expired">已过期 Expired</option>
+              <option value="low_classes">课时不足 Low Classes</option>
             </select>
           </div>
 
