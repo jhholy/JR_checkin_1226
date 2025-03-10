@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield } from 'lucide-react';
+import { Shield, User } from 'lucide-react';
 import { MuayThaiIcon } from '../components/icons/MuayThaiIcon';
 
 export default function Home() {
@@ -37,8 +37,19 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* 管理员登录入口 */}
+        {/* 会员登录入口 - 新增 */}
         <div className="mt-8 text-center">
+          <Link
+            to="/member-login"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <User className="w-5 h-5" />
+            <span>会员登录 Member Login</span>
+          </Link>
+        </div>
+
+        {/* 管理员登录入口 */}
+        <div className="mt-4 text-center">
           <Link
             to="/admin"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"

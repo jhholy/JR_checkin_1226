@@ -1,16 +1,8 @@
-import React, { Suspense } from 'react';
-import ErrorBoundary from './utils/errors/ErrorBoundary';
-import LoadingSpinner from './components/common/LoadingSpinner';
+import React from 'react';
 import AppRouter from './components/routing/AppRouter';
 
 function App() {
-  return (
-    <ErrorBoundary>
-      <Suspense fallback={<LoadingSpinner />}>
-        <AppRouter />
-      </Suspense>
-    </ErrorBoundary>
-  );
+  return <AppRouter />;
 }
 
 export default App;

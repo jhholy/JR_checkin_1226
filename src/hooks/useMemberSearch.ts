@@ -7,8 +7,8 @@ import { normalizeNameForComparison } from '../utils/memberUtils';
 
 interface SearchParams {
   searchTerm?: string;
-  cardType?: CardType | 'no_card' | '';
-  cardSubtype?: CardSubtype | '';
+  cardType?: CardType | 'no_card' | '团课' | '私教课' | 'all_cards' | '';
+  cardSubtype?: CardSubtype | string | '';
   expiryStatus?: 'active' | 'upcoming' | 'expired' | 'low_classes' | '';
   page?: number;
   pageSize?: number;
@@ -46,6 +46,11 @@ export function useMemberSearch(defaultPageSize: number = 10) {
       const start = (page - 1) * pageSize;
       const end = start + pageSize - 1;
 
+      console.log('搜索会员，参数:', params);
+
+      // 清除缓存
+      memberCache.clear();
+
       // 构建基础查询
       let query = supabase
         .from('members')
@@ -54,6 +59,7 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           membership_cards (
             id,
             card_type,
+            card_category,
             card_subtype,
             valid_until,
             remaining_group_sessions,
@@ -69,19 +75,26 @@ export function useMemberSearch(defaultPageSize: number = 10) {
       }
 
       // 处理卡类型和子类型过滤
-      if (params.cardType || params.cardSubtype) {
+      if (params.cardType) {
         if (params.cardType === 'no_card') {
           // 筛选无卡会员
           query = query.is('membership_cards', null);
+        } else if (params.cardType === 'all_cards') {
+          // 筛选有卡会员，不过滤卡类型
+          query = query.not('membership_cards', 'is', null);
         } else {
           // 筛选有特定卡类型的会员
           query = query.not('membership_cards', 'is', null);
           
+          // 处理中文卡类型
+          // 数据库中存储的就是中文卡类型，所以直接使用
           if (params.cardType) {
+            console.log('使用卡类型过滤:', params.cardType);
             query = query.eq('membership_cards.card_type', params.cardType);
           }
           
           if (params.cardSubtype) {
+            console.log('使用卡子类型过滤:', params.cardSubtype);
             query = query.eq('membership_cards.card_subtype', params.cardSubtype);
           }
         }
@@ -125,26 +138,38 @@ export function useMemberSearch(defaultPageSize: number = 10) {
             }
             return false;
           });
+          
           return hasValidCard;
         });
       }
 
-      // 更新缓存和状态
-      const totalCount = count || 0;
-      memberCache.set(createCacheKey('members', params), {
-        members: filteredData,
-        totalCount
-      });
+      // 计算总页数
+      const totalCount = count || filteredData.length;
+      const totalPages = Math.ceil(totalCount / pageSize);
 
+      // 更新结果
       setResult({
         members: filteredData,
         totalCount,
         currentPage: page,
-        totalPages: Math.ceil(totalCount / pageSize)
+        totalPages
       });
+
+      return {
+        members: filteredData,
+        totalCount,
+        currentPage: page,
+        totalPages
+      };
     } catch (err) {
-      console.error('Query error:', err);
-      setError(handleSupabaseError(err));
+      console.error('搜索会员失败:', err);
+      setError('搜索会员失败，请重试');
+      return {
+        members: [],
+        totalCount: 0,
+        currentPage: 1,
+        totalPages: 1
+      };
     } finally {
       setLoading(false);
     }

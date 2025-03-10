@@ -13,6 +13,7 @@ import NetworkError from '../components/common/NetworkError';
 export default function NewMemberCheckIn() {
   const navigate = useNavigate();
   const { submitNewMemberCheckIn, loading, error } = useNewMemberCheckIn();
+  const [courseType, setCourseType] = useState<'group' | 'private'>('group');
   const [checkInStatus, setCheckInStatus] = useState<{
     success: boolean;
     isExtra?: boolean;
@@ -43,6 +44,10 @@ export default function NewMemberCheckIn() {
     }
   };
 
+  const handleCourseTypeChange = (type: 'group' | 'private') => {
+    setCourseType(type);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4">
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
@@ -61,11 +66,40 @@ export default function NewMemberCheckIn() {
             {loading ? (
               <LoadingSpinner />
             ) : (
-              <CheckInForm 
-                onSubmit={handleSubmit} 
-                isNewMember={true} 
-                requireEmail={true}
-              />
+              <>
+                <div className="mb-6">
+                  <div className="flex justify-center space-x-4">
+                    <button
+                      type="button"
+                      onClick={() => handleCourseTypeChange('group')}
+                      className={`px-4 py-2 rounded-lg ${
+                        courseType === 'group' 
+                          ? 'bg-[#4285F4] text-white' 
+                          : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      团课 Group Class
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCourseTypeChange('private')}
+                      className={`px-4 py-2 rounded-lg ${
+                        courseType === 'private' 
+                          ? 'bg-[#EA4335] text-white' 
+                          : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      私教 Private Class
+                    </button>
+                  </div>
+                </div>
+                <CheckInForm 
+                  onSubmit={handleSubmit} 
+                  isNewMember={true} 
+                  requireEmail={true}
+                  courseType={courseType}
+                />
+              </>
             )}
           </>
         )}

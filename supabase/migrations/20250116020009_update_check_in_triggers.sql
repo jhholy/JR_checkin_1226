@@ -88,7 +88,7 @@ BEGIN
 
   IF FOUND THEN
     IF v_existing_check_in.is_private THEN
-      RAISE EXCEPTION '今天已经预约了该时段的私教课。Already booked a private class for this time slot today.'
+      RAISE EXCEPTION '今天已经签到过这个时段的私教课。Already checked in for this private class time slot today.'
         USING HINT = 'duplicate_checkin';
     ELSE
       RAISE EXCEPTION '今天已经签到过这个时段的课程。Already checked in for this time slot today.'

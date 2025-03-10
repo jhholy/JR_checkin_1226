@@ -1,13 +1,16 @@
-import React from 'react';
-import { Member, MembershipCard } from '../../types/database';
-import { formatDate, isWithinDays, isPast } from '../../utils/dateUtils';
-import { Pencil, Trash2, AlertCircle } from 'lucide-react';
-import { getFullCardName } from '../../utils/membership/formatters';
-import Pagination from '../common/Pagination';
+import React, { useState } from 'react';
+import { Database } from '../../types/database';
+import { formatCardType, formatCardValidity, formatRemainingClasses } from '../../utils/membership/formatters';
+import EditMemberModal from './EditMemberModal';
+import { supabase } from '../../lib/supabase';
 
-interface Props {
-  members: (Member & { membership_cards?: MembershipCard[] })[];
-  onEdit: (member: Member) => void;
+type Member = Database['public']['Tables']['members']['Row'];
+type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
+
+interface MemberTableProps {
+  members: (Member & { membership_cards: MembershipCard[] })[];
+  onMemberUpdated: () => void;
+  onEdit: (member: Member & { membership_cards: MembershipCard[] }) => void;
   onDelete: (memberId: string) => void;
   currentPage: number;
   totalPages: number;
@@ -16,225 +19,131 @@ interface Props {
 
 export default function MemberTable({ 
   members, 
-  onEdit,
+  onMemberUpdated, 
+  onEdit, 
   onDelete,
   currentPage,
   totalPages,
-  onPageChange 
-}: Props) {
-  const getMembershipStatus = (member: Member & { membership_cards?: MembershipCard[] }) => {
-    if (!member.membership_cards?.length) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          无会员卡 No Card
-        </span>
-      );
-    }
+  onPageChange
+}: MemberTableProps) {
+  const [editingMember, setEditingMember] = useState<Member & { membership_cards: MembershipCard[] } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // 检查所有会员卡的状态
-    const hasExpiredCard = member.membership_cards.some(card => 
-      card.valid_until && isPast(new Date(card.valid_until))
-    );
+  const handleEditClick = (member: Member & { membership_cards: MembershipCard[] }) => {
+    onEdit(member);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingMember(null);
+  };
+
+  const handleMemberUpdated = () => {
+    setIsModalOpen(false);
+    setEditingMember(null);
+    onMemberUpdated();
+  };
+
+  const handleDeleteMember = async (memberId: string) => {
+    onDelete(memberId);
+  };
+
+  // 分页控件
+  const Pagination = () => {
+    if (totalPages <= 1) return null;
     
-    const hasExpiringSoonCard = member.membership_cards.some(card =>
-      card.valid_until && isWithinDays(new Date(card.valid_until), 7)
-    );
-
-    const hasLowClasses = member.membership_cards.some(card =>
-      card.card_type === 'class' && (card.remaining_group_sessions || 0) <= 2
-    );
-
-    if (hasExpiredCard) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          已过期 Expired
-        </span>
-      );
-    }
-
-    if (hasExpiringSoonCard) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          即将到期 Expiring Soon
-        </span>
-      );
-    }
-
-    if (hasLowClasses) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          课时不足 Low Classes
-        </span>
-      );
-    }
-
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-        正常 Active
-      </span>
+      <div className="flex justify-center mt-4 space-x-2">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`px-3 py-1 rounded ${
+              currentPage === page
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 hover:bg-gray-300'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
     );
-  };
-
-  const getCardTypes = (member: Member & { membership_cards?: MembershipCard[] }) => {
-    if (!member.membership_cards?.length) return '-';
-    
-    return member.membership_cards.map(card => {
-      return getFullCardName(card.card_type, card.card_category, card.card_subtype);
-    }).join(', ');
-  };
-
-  const getRemainingClasses = (member: Member & { membership_cards?: MembershipCard[] }) => {
-    if (!member.membership_cards?.length) return '-';
-
-    const classCards = member.membership_cards.filter(card => 
-      card.card_type === '团课' || card.card_type === '私教课'
-    );
-
-    if (!classCards.length) return 'N/A';
-
-    return classCards.map(card => {
-      const remaining = card.card_type === '私教课' 
-        ? card.remaining_private_sessions 
-        : card.remaining_group_sessions;
-      
-      return (
-        <span 
-          key={card.id}
-          className={`${(remaining || 0) <= 2 ? 'text-orange-600 font-medium' : ''}`}
-        >
-          {card.card_type === '私教课' ? '私教:' : '团课:'} {remaining || 0}
-        </span>
-      );
-    }).reduce((prev, curr) => [prev, ', ', curr]);
-  };
-
-  const getExpiryDate = (member: Member & { membership_cards?: MembershipCard[] }) => {
-    if (!member.membership_cards?.length) return '-';
-
-    return member.membership_cards
-      .filter(card => card.valid_until)
-      .map(card => (
-        <span
-          key={card.id}
-          className={`block ${
-            isWithinDays(new Date(card.valid_until!), 7)
-              ? 'text-yellow-600 font-medium'
-              : 'text-gray-900'
-          }`}
-        >
-          {formatDate(card.valid_until!)}
-        </span>
-      ));
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                会员 MEMBER
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                卡类型 MEMBERSHIP
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                剩余课时 CLASSES LEFT
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                到期日期 EXPIRY
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                状态 STATUS
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                操作 ACTIONS
-              </th>
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              姓名
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              电话
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              邮箱
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              会员卡
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              操作
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {members.map((member) => (
+            <tr key={member.id}>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">{member.name}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-500">{member.phone || '-'}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-500">{member.email || '-'}</div>
+              </td>
+              <td className="px-6 py-4">
+                <div className="text-sm text-gray-900">
+                  {member.membership_cards && member.membership_cards.length > 0 ? (
+                    <ul className="list-disc pl-5">
+                      {member.membership_cards.map((card) => (
+                        <li key={card.id} className="mb-1">
+                          <span className="font-medium">{formatCardType(card)}</span>
+                          <br />
+                          <span className="text-xs text-gray-500">
+                            {formatRemainingClasses(card)} | {formatCardValidity(card)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-gray-500">无会员卡</span>
+                  )}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button
+                  onClick={() => handleEditClick(member)}
+                  className="text-indigo-600 hover:text-indigo-900 mr-4"
+                >
+                  编辑
+                </button>
+                <button
+                  onClick={() => handleDeleteMember(member.id)}
+                  className="text-red-600 hover:text-red-900"
+                >
+                  删除
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {members.map(member => (
-              <tr key={member.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {member.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {member.email}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">
-                    {getCardTypes(member)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">
-                    {getRemainingClasses(member)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getExpiryDate(member)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getMembershipStatus(member)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onEdit(member)}
-                      className="inline-flex items-center px-3 py-1.5 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors gap-1"
-                    >
-                      <Pencil className="w-4 h-4" />
-                      <span>编辑 Edit</span>
-                    </button>
-                    <button
-                      onClick={() => onDelete(member.id)}
-                      className="inline-flex items-center px-3 py-1.5 bg-[#EA4335] text-white rounded-lg hover:bg-red-600 transition-colors gap-1"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>删除 Delete</span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
 
-      {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              第 {currentPage} 页，共 {totalPages} 页
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-md text-sm text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                上一页 Prev
-              </button>
-              <button
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded-md text-sm text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                下一页 Next
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Pagination />
     </div>
   );
 }

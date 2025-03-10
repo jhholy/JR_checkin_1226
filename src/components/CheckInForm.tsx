@@ -83,10 +83,6 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
 
       const result = await onSubmit(submitData);
 
-      if (!result) {
-        throw new Error('签到失败：未收到有效响应');
-      }
-
       console.log('签到结果:', result);
 
       if (result.isDuplicate) {

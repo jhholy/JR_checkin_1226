@@ -36,6 +36,18 @@ export default function CheckInRecordsList() {
   } = useTrainers();
 
   const handleSearch = async (page = 1) => {
+    console.log('搜索参数:', {
+      memberName: filters.memberName,
+      startDate: filters.startDate || undefined,
+      endDate: filters.endDate || undefined,
+      classType: filters.classType || undefined,
+      isExtra: filters.isExtra,
+      isPrivate: filters.isPrivate,
+      trainerId: filters.trainerId,
+      page,
+      pageSize: 10
+    });
+    
     await fetchRecords({
       memberName: filters.memberName,
       startDate: filters.startDate || undefined,
@@ -155,7 +167,11 @@ export default function CheckInRecordsList() {
             </label>
             <select
               value={filters.trainerId}
-              onChange={(e) => setFilters(prev => ({ ...prev, trainerId: e.target.value }))}
+              onChange={(e) => {
+                const newTrainerId = e.target.value;
+                console.log('选择的教练ID:', newTrainerId);
+                setFilters(prev => ({ ...prev, trainerId: newTrainerId }));
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
             >
               <option value="">全部 All</option>

@@ -1,0 +1,71 @@
+BEGIN
+DELETE 0
+DELETE 0
+DELETE 0
+INSERT 0 2
+                   test_case                    
+------------------------------------------------
+ 测试用例19：测试已存在会员的额外签到（通过ID）
+(1 row)
+
+                                                                         handle_check_in                                                                          
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"isExtra": true, "message": "您暂无有效的团课卡，已记录为额外签到", "success": true, "checkInId": "9c50986d-c3b4-4241-8918-8be9d076e781", "isNewMember": false}
+(1 row)
+
+                      test_case                       
+------------------------------------------------------
+ 测试用例20：测试已存在会员的额外签到（通过名字匹配）
+(1 row)
+
+                                                  handle_check_in                                                  
+-------------------------------------------------------------------------------------------------------------------
+ {"message": "null value in column \"id\" of relation \"members\" violates not-null constraint", "success": false}
+(1 row)
+
+          test_case           
+------------------------------
+ 测试用例21：测试中文名字匹配
+(1 row)
+
+                                                  handle_check_in                                                  
+-------------------------------------------------------------------------------------------------------------------
+ {"message": "null value in column \"id\" of relation \"members\" violates not-null constraint", "success": false}
+(1 row)
+
+              test_case               
+--------------------------------------
+ 测试用例22：测试名字相似但不完全相同
+(1 row)
+
+                                                  handle_check_in                                                  
+-------------------------------------------------------------------------------------------------------------------
+ {"message": "null value in column \"id\" of relation \"members\" violates not-null constraint", "success": false}
+(1 row)
+
+               test_case                
+----------------------------------------
+ 测试用例23：测试名字完全不同但邮箱相同
+(1 row)
+
+                                                  handle_check_in                                                  
+-------------------------------------------------------------------------------------------------------------------
+ {"message": "null value in column \"id\" of relation \"members\" violates not-null constraint", "success": false}
+(1 row)
+
+                     test_case                      
+----------------------------------------------------
+ 测试用例24：测试名字和邮箱都不同（应该创建新会员）
+(1 row)
+
+psql:test_sql/test_check_in_part4.sql:109: ERROR:  function handle_check_in(unknown, unknown, unknown, unknown, unknown, date, unknown, unknown, unknown, boolean) does not exist
+LINE 1: SELECT handle_check_in(
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:test_sql/test_check_in_part4.sql:112: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:test_sql/test_check_in_part4.sql:118: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:test_sql/test_check_in_part4.sql:121: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:test_sql/test_check_in_part4.sql:126: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:test_sql/test_check_in_part4.sql:129: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+psql:test_sql/test_check_in_part4.sql:133: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK

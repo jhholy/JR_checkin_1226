@@ -7,6 +7,7 @@ interface FetchRecordsParams {
   startDate?: string;
   endDate?: string;
   timeSlot?: string;
+  classType?: string;
   isExtra?: boolean;
   is1v2?: boolean;
   trainerId?: string;
@@ -23,8 +24,23 @@ interface CheckInStats {
   oneOnTwo: number;
 }
 
+interface CheckInRecord {
+  id: string;
+  member_id: string;
+  time_slot: string;
+  is_extra: boolean;
+  is_private: boolean;
+  is_1v2: boolean;
+  created_at: string;
+  check_in_date: string;
+  trainer_id: string | null;
+  members: { name: string; email: string }[];
+  trainer: { name: string }[];
+  [key: string]: any; // 允许其他字段
+}
+
 export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
-  const [records, setRecords] = useState<CheckIn[]>([]);
+  const [records, setRecords] = useState<CheckInRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -113,6 +129,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
     startDate,
     endDate,
     timeSlot,
+    classType,
     isExtra,
     is1v2,
     trainerId,
@@ -124,12 +141,25 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
       setLoading(true);
       setError(null);
 
+      // 添加调试日志
+      console.log('筛选条件:', {
+        memberName,
+        startDate,
+        endDate,
+        timeSlot,
+        classType,
+        isExtra,
+        is1v2,
+        trainerId,
+        isPrivate
+      });
+      
       // 获取统计数据
       const statsData = await fetchStats({
         memberName,
         startDate,
         endDate,
-        timeSlot,
+        timeSlot: classType || timeSlot,
         isExtra,
         is1v2,
         trainerId
@@ -148,6 +178,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
           is_1v2,
           created_at,
           check_in_date,
+          trainer_id,
           members!inner(name, email),
           trainer:trainers(name)
         `, {
@@ -166,6 +197,9 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
       if (timeSlot) {
         query = query.eq('time_slot', timeSlot);
       }
+      if (classType) {
+        query = query.eq('class_type', classType);
+      }
       if (isExtra !== undefined) {
         query = query.eq('is_extra', isExtra);
       }
@@ -176,6 +210,7 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         query = query.eq('is_1v2', is1v2);
       }
       if (trainerId) {
+        console.log('使用教练ID筛选:', trainerId);
         query = query.eq('trainer_id', trainerId);
       }
 
@@ -184,9 +219,17 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 
-      if (queryError) throw queryError;
+      if (queryError) {
+        console.error('查询错误:', queryError);
+        throw queryError;
+      }
 
-      setRecords(data as CheckIn[]);
+      console.log('查询结果数量:', data?.length || 0);
+      if (data && data.length > 0) {
+        console.log('第一条记录:', data[0]);
+      }
+
+      setRecords(data as unknown as CheckInRecord[]);
       setTotalCount(count || 0);
       setCurrentPage(page);
       setTotalPages(Math.ceil((count || 0) / pageSize));

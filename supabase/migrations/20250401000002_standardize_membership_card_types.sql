@@ -111,7 +111,6 @@ SELECT
   remaining_private_sessions,
   valid_until,
   created_at,
-  updated_at,
   CASE 
     WHEN card_type = '团课' AND card_category = '课时卡' AND card_subtype = '单次卡' THEN 'single_class'
     WHEN card_type = '团课' AND card_category = '课时卡' AND card_subtype = '两次卡' THEN 'two_classes'

@@ -9,27 +9,42 @@ import { UserPlus } from 'lucide-react';
 import AddMemberModal from './AddMemberModal';
 
 type Member = Database['public']['Tables']['members']['Row'];
+type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
+type MemberWithCards = Member & { membership_cards: MembershipCard[] };
 type CardType = Database['public']['Enums']['CardType'];
-type ExtendedCardType = CardType | 'no_card';
+type ExtendedCardType = CardType | 'no_card' | '团课' | '私教课' | 'all_cards' | '';
 type CardSubtype = Database['public']['Enums']['CardSubtype'];
 
 // 卡类型和子类型的映射关系
-const cardTypeToSubtypes: Record<ExtendedCardType, CardSubtype[]> = {
-  'monthly': ['single_monthly', 'double_monthly'],
-  'class': ['single_class', 'two_classes', 'ten_classes'],
-  'private': ['single_private', 'ten_private'],
-  'no_card': []
+const cardTypeToSubtypes: Record<ExtendedCardType, string[]> = {
+  'monthly': ['单次月卡', '双次月卡'],
+  'class': ['单次卡', '两次卡', '10次卡'],
+  'private': ['单次卡', '10次卡'],
+  '团课': ['单次卡', '两次卡', '10次卡', '单次月卡', '双次月卡'],
+  '私教课': ['单次卡', '10次卡'],
+  'no_card': [],
+  'all_cards': [],
+  '': []
 };
 
 // 卡子类型的显示名称
-const cardSubtypeLabels: Record<CardSubtype, string> = {
-  'single_monthly': '团课单次月卡 Single Monthly',
-  'double_monthly': '团课双次月卡 Double Monthly',
-  'single_class': '团课单次卡 Single Class',
-  'two_classes': '团课两次卡 Two Classes',
-  'ten_classes': '团课十次卡 Ten Classes',
-  'single_private': '私教单次卡 Single Private',
-  'ten_private': '私教十次卡 Ten Private'
+const cardSubtypeLabels: Record<string, string> = {
+  '单次月卡': '团课单次月卡 Single Monthly',
+  '双次月卡': '团课双次月卡 Double Monthly',
+  '单次卡': '单次卡 Single Class/Private',
+  '两次卡': '团课两次卡 Two Classes',
+  '10次卡': '10次卡 Ten Classes/Private'
+};
+
+// 卡子类型的数据库存储值映射 - 不再需要，直接使用中文值
+const cardSubtypeToDbValue: Record<string, string> = {
+  'single_monthly': '单次月卡',
+  'double_monthly': '双次月卡',
+  'single_class': '单次卡',
+  'two_classes': '两次卡',
+  'ten_classes': '10次卡',
+  'single_private': '单次卡',
+  'ten_private': '10次卡'
 };
 
 const PAGE_SIZE = 10;
@@ -37,9 +52,9 @@ const PAGE_SIZE = 10;
 export default function MemberList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [cardTypeFilter, setCardTypeFilter] = useState<ExtendedCardType | ''>('');
-  const [cardSubtypeFilter, setCardSubtypeFilter] = useState<CardSubtype | ''>('');
+  const [cardSubtypeFilter, setCardSubtypeFilter] = useState<string>('');
   const [expiryFilter, setExpiryFilter] = useState<'active' | 'upcoming' | 'expired' | 'low_classes' | ''>('');
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [selectedMember, setSelectedMember] = useState<MemberWithCards | null>(null);
   const [_showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -57,9 +72,11 @@ export default function MemberList() {
   } = useMemberSearch(PAGE_SIZE);
 
   const handleSearch = (page: number = 1) => {
+    // 直接使用选择的卡类型和卡子类型进行搜索
+    // 数据库中存储的就是中文值
     searchMembers({
       searchTerm,
-      cardType: cardTypeFilter,
+      cardType: cardTypeFilter as CardType | 'no_card' | '团课' | '私教课' | 'all_cards' | '',
       cardSubtype: cardSubtypeFilter,
       expiryStatus: expiryFilter,
       page,
@@ -82,7 +99,7 @@ export default function MemberList() {
     handleSearch(page);
   };
 
-  const handleEdit = (member: Member) => {
+  const handleEdit = (member: MemberWithCards) => {
     setSelectedMember(member);
     setIsEditModalOpen(true);
   };
@@ -114,11 +131,23 @@ export default function MemberList() {
 
   // 添加刷新会员列表的方法
   const refreshMemberList = () => {
+    console.log('执行刷新会员列表...');
+    // 清除搜索条件，确保获取最新数据
+    setSearchTerm('');
+    setCardTypeFilter('');
+    setCardSubtypeFilter('');
+    setExpiryFilter('');
+    // 重新搜索
     handleSearch(currentPage);
   };
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
+
+  // 确保members数组中的每个成员都有membership_cards属性
+  // 由于useMemberSearch返回的members已经包含membership_cards属性
+  // 这里只需要进行类型断言
+  const membersWithCards = members as unknown as MemberWithCards[];
 
   return (
     <div className="space-y-6">
@@ -165,9 +194,9 @@ export default function MemberList() {
             >
               <option value="">全部 All</option>
               <option value="no_card">无会员卡 No Card</option>
-              <option value="class">团课次卡 Class</option>
-              <option value="monthly">团课月卡 Monthly</option>
-              <option value="private">私教卡 Private</option>
+              <option value="团课">团课 Group Class</option>
+              <option value="私教课">私教课 Private Class</option>
+              <option value="all_cards">全部卡类型 All Card Types</option>
             </select>
           </div>
 
@@ -177,14 +206,14 @@ export default function MemberList() {
             </label>
             <select
               value={cardSubtypeFilter}
-              onChange={(e) => setCardSubtypeFilter(e.target.value as CardSubtype | '')}
+              onChange={(e) => setCardSubtypeFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               disabled={cardTypeFilter === 'no_card' || !cardTypeFilter}
             >
               <option value="">全部子类型 All subtypes</option>
               {cardTypeFilter && cardTypeFilter !== 'no_card' && cardTypeToSubtypes[cardTypeFilter].map(subtype => (
                 <option key={subtype} value={subtype}>
-                  {cardSubtypeLabels[subtype]}
+                  {cardSubtypeLabels[subtype] || subtype}
                 </option>
               ))}
             </select>
@@ -222,7 +251,8 @@ export default function MemberList() {
       </div>
 
       <MemberTable 
-        members={members} 
+        members={membersWithCards} 
+        onMemberUpdated={refreshMemberList}
         onEdit={handleEdit}
         onDelete={handleDelete}
         currentPage={currentPage}

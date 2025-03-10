@@ -405,6 +405,9 @@ export interface NewMemberFormData {
     name: string;
     email: string;
     classType: Database['public']['Enums']['class_type'];
+    timeSlot: string;
+    trainerId?: string;
+    is1v2?: boolean;
 }
 
 export interface DatabaseError {

@@ -60,11 +60,11 @@ export const checkAuth = async () => {
   }
 };
 
-// 监听认证状态变化
-supabase.auth.onAuthStateChange((_event, session) => {
-  if (session?.user) {
-    console.log('[Auth] 用户已登录:', session.user.email);
-  } else {
-    console.log('[Auth] 用户已登出');
+// 添加认证状态变化监听
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    console.log('[Auth] 已登录:', session?.user?.email);
+  } else if (event === 'SIGNED_OUT') {
+    console.log('[Auth] 已登出');
   }
 });

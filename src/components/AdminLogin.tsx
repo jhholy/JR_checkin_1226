@@ -22,14 +22,17 @@ export default function AdminLogin({ onSuccess }: AdminLoginProps) {
     setError(null);
 
     try {
-      await signInAdmin(email, password);
-      await retry();
-      if (onSuccess) {
-        onSuccess();
+      const result = await signInAdmin({ username: email, password });
+      console.log('Login result:', result); // 添加调试日志
+
+      if (result.success) {
+        // 使用replace: true确保不能返回登录页
+        navigate('/admin/dashboard', { replace: true });
       } else {
-        navigate('/admin');
+        setError(result.error || '登录失败，请重试。Login failed, please try again.');
       }
     } catch (err) {
+      console.error('Login error:', err); // 添加调试日志
       setError(err instanceof Error ? err.message : '登录失败，请重试。Login failed, please try again.');
     } finally {
       setLoading(false);
