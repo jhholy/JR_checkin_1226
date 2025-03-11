@@ -100,7 +100,8 @@ CREATE OR REPLACE FUNCTION check_card_validity(
   p_card_id uuid,
   p_member_id uuid,
   p_class_type text,
-  p_check_in_date date
+  p_check_in_date date,
+  p_trainer_id uuid DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -110,6 +111,7 @@ DECLARE
   v_class_type class_type;
   v_is_private boolean;
   v_result jsonb;
+  v_trainer_type text;
 BEGIN
   -- 记录开始验证
   PERFORM log_debug(
@@ -119,7 +121,8 @@ BEGIN
       'card_id', p_card_id,
       'member_id', p_member_id,
       'class_type', p_class_type,
-      'check_in_date', p_check_in_date
+      'check_in_date', p_check_in_date,
+      'trainer_id', p_trainer_id
     )
   );
 
@@ -232,6 +235,33 @@ BEGIN
         'is_private', v_is_private
       )
     );
+  END IF;
+
+  -- 检查教练等级是否匹配（仅私教课）
+  IF v_is_private AND p_trainer_id IS NOT NULL THEN
+    -- 获取教练等级
+    SELECT type INTO v_trainer_type FROM trainers WHERE id = p_trainer_id;
+    
+    IF v_trainer_type != v_card.trainer_type THEN
+      PERFORM log_debug(
+        'check_card_validity',
+        '教练等级与会员卡不匹配',
+        jsonb_build_object(
+          'card_id', p_card_id,
+          'card_trainer_type', v_card.trainer_type,
+          'trainer_id', p_trainer_id,
+          'trainer_type', v_trainer_type
+        )
+      );
+      RETURN jsonb_build_object(
+        'is_valid', false,
+        'reason', '教练等级与会员卡不匹配',
+        'details', jsonb_build_object(
+          'card_trainer_type', v_card.trainer_type,
+          'trainer_type', v_trainer_type
+        )
+      );
+    END IF;
   END IF;
 
   -- 检查剩余课时
@@ -976,7 +1006,7 @@ BEGIN
 
     -- 验证会员卡
     IF p_card_id IS NOT NULL THEN
-      v_card_validity := check_card_validity(p_card_id, p_member_id, p_class_type, p_check_in_date);
+      v_card_validity := check_card_validity(p_card_id, p_member_id, p_class_type, p_check_in_date, p_trainer_id);
       
       IF (v_card_validity->>'is_valid')::boolean THEN
         v_is_extra := false;

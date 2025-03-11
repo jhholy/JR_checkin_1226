@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useMemberAuth } from '../contexts/MemberAuthContext';
 
 export function useMemberData() {
-  const { memberId, isAuthenticated } = useMemberAuth();
+  const { member, isAuthenticated } = useMemberAuth();
   const [memberInfo, setMemberInfo] = useState<any>(null);
   const [memberCards, setMemberCards] = useState<any[]>([]);
   const [checkInHistory, setCheckInHistory] = useState<any[]>([]);
@@ -12,7 +12,7 @@ export function useMemberData() {
 
   useEffect(() => {
     // 如果会员未登录，不执行数据获取
-    if (!isAuthenticated || !memberId) {
+    if (!isAuthenticated || !member?.id) {
       setLoading(false);
       return;
     }
@@ -26,7 +26,7 @@ export function useMemberData() {
         const { data: memberData, error: memberError } = await supabase
           .from('members')
           .select('*')
-          .eq('id', memberId)
+          .eq('id', member.id)
           .single();
 
         if (memberError) throw memberError;
@@ -36,7 +36,7 @@ export function useMemberData() {
         const { data: cardsData, error: cardsError } = await supabase
           .from('membership_cards')
           .select('*')
-          .eq('member_id', memberId)
+          .eq('member_id', member.id)
           .order('created_at', { ascending: false });
 
         if (cardsError) throw cardsError;
@@ -49,7 +49,7 @@ export function useMemberData() {
             *,
             trainers(name)
           `)
-          .eq('member_id', memberId)
+          .eq('member_id', member.id)
           .order('check_in_date', { ascending: false })
           .order('created_at', { ascending: false });
 
@@ -65,7 +65,7 @@ export function useMemberData() {
     };
 
     fetchMemberData();
-  }, [memberId, isAuthenticated]);
+  }, [member?.id, isAuthenticated]);
 
   return { memberInfo, memberCards, checkInHistory, loading, error };
 } 

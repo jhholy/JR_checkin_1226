@@ -13,7 +13,6 @@ export default function CheckInRecordsList() {
     memberName: '',
     startDate: '',
     endDate: '',
-    classType: '' as ClassType | '',
     isExtra: undefined as boolean | undefined,
     isPrivate: undefined as boolean | undefined,
     trainerId: ''
@@ -40,7 +39,6 @@ export default function CheckInRecordsList() {
       memberName: filters.memberName,
       startDate: filters.startDate || undefined,
       endDate: filters.endDate || undefined,
-      classType: filters.classType || undefined,
       isExtra: filters.isExtra,
       isPrivate: filters.isPrivate,
       trainerId: filters.trainerId,
@@ -52,10 +50,9 @@ export default function CheckInRecordsList() {
       memberName: filters.memberName,
       startDate: filters.startDate || undefined,
       endDate: filters.endDate || undefined,
-      classType: filters.classType || undefined,
       isExtra: filters.isExtra,
       isPrivate: filters.isPrivate,
-      trainerId: filters.trainerId,
+      trainerId: filters.trainerId || undefined,
       page,
       pageSize: 10
     });
@@ -74,7 +71,6 @@ export default function CheckInRecordsList() {
       memberName: '',
       startDate: '',
       endDate: '',
-      classType: '',
       isExtra: undefined,
       isPrivate: undefined,
       trainerId: ''
@@ -120,7 +116,7 @@ export default function CheckInRecordsList() {
     <div className="space-y-4">
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h3 className="text-lg font-medium mb-4">签到记录查询 Check-in Records</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               会员姓名/邮箱 Member Name/Email
@@ -144,21 +140,6 @@ export default function CheckInRecordsList() {
               onStartDateChange={(date) => setFilters(prev => ({ ...prev, startDate: date || '' }))}
               onEndDateChange={(date) => setFilters(prev => ({ ...prev, endDate: date || '' }))}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              课程类型 Class Type
-            </label>
-            <select
-              value={filters.classType}
-              onChange={(e) => setFilters(prev => ({ ...prev, classType: e.target.value as ClassType | '' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
-            >
-              <option value="">全部 All</option>
-              <option value="morning">早课 Morning</option>
-              <option value="evening">晚课 Evening</option>
-            </select>
           </div>
 
           <div>
@@ -230,21 +211,23 @@ export default function CheckInRecordsList() {
               <option value="true">额外签到 Extra</option>
             </select>
           </div>
-        </div>
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            重置 Reset
-          </button>
-          <button
-            onClick={handleFilter}
-            className="px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            搜索 Search
-          </button>
+          <div className="flex items-end justify-end">
+            <div className="flex gap-2">
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                重置 Reset
+              </button>
+              <button
+                onClick={handleFilter}
+                className="px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                搜索 Search
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

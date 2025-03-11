@@ -4,7 +4,7 @@ import { useMemberAuth } from '../contexts/MemberAuthContext';
 import { useMemberData } from '../hooks/useMemberData';
 
 export default function MemberCenter() {
-  const { isAuthenticated, memberName, logout } = useMemberAuth();
+  const { isAuthenticated, member, setMember } = useMemberAuth();
   const { memberInfo, memberCards, checkInHistory, loading, error } = useMemberData();
   const navigate = useNavigate();
 
@@ -20,7 +20,8 @@ export default function MemberCenter() {
   }
 
   const handleLogout = () => {
-    logout();
+    setMember(null);
+    localStorage.removeItem('member');
     navigate('/');
   };
 
@@ -29,7 +30,7 @@ export default function MemberCenter() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">
-            {memberName} 的个人中心
+            {member?.name} 的个人中心
           </h1>
           <button
             onClick={handleLogout}

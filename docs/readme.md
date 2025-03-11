@@ -138,10 +138,9 @@ graph TD
   - 私教：按具体预约时段
 - **trainer_id**: 教练ID（仅私教课适用）
 - **is_1v2**: 是否1对2私教课（仅私教课适用）
-- **check_in_time**: 签到时间戳
+- **created_at**: 签到时间戳
 - **check_in_date**: 签到日期
 - **check_in_type**: 签到类型（正常/额外）
-- **notes**: 备注信息
 
 ### 4. 教练信息 (trainer表)
 - **id**: 教练ID

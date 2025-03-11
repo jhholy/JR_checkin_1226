@@ -210,6 +210,35 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
     setSuccessMessage('');
 
     try {
+      // 先检查是否有签到记录引用了该会员卡
+      const { data: checkInsData, error: checkInsError } = await supabase
+        .from('check_ins')
+        .select('id, check_in_date')
+        .eq('card_id', cardId);
+
+      if (checkInsError) throw checkInsError;
+
+      // 如果有签到记录引用了该会员卡，询问用户是否同时删除这些记录
+      if (checkInsData && checkInsData.length > 0) {
+        const confirmDelete = confirm(`此会员卡已被用于${checkInsData.length}条签到记录。要删除此会员卡，需要先删除这些签到记录。是否继续？`);
+        
+        if (!confirmDelete) {
+          setLoading(false);
+          return;
+        }
+        
+        // 用户确认删除，先删除所有引用该会员卡的签到记录
+        const { error: deleteCheckInsError } = await supabase
+          .from('check_ins')
+          .delete()
+          .eq('card_id', cardId);
+          
+        if (deleteCheckInsError) throw deleteCheckInsError;
+        
+        showSuccessMessage(`已删除${checkInsData.length}条相关签到记录`);
+      }
+
+      // 删除会员卡
       const { error } = await supabase
         .from('membership_cards')
         .delete()

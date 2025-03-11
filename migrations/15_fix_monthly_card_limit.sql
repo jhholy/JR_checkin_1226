@@ -46,10 +46,10 @@ CREATE OR REPLACE FUNCTION handle_check_in(
   p_member_id UUID,
   p_name TEXT,
   p_email TEXT,
-  p_card_id UUID,
   p_class_type TEXT,
   p_check_in_date DATE,
   p_time_slot TEXT,
+  p_card_id UUID DEFAULT NULL,
   p_trainer_id UUID DEFAULT NULL,
   p_is_1v2 BOOLEAN DEFAULT FALSE
 ) RETURNS JSONB AS $$
@@ -121,7 +121,7 @@ BEGIN
     
     -- 验证会员卡
     IF p_card_id IS NOT NULL THEN
-      v_card_validity := check_card_validity(p_card_id, p_member_id, p_class_type, p_check_in_date);
+      v_card_validity := check_card_validity(p_card_id, p_member_id, p_class_type, p_check_in_date, p_trainer_id);
       
       -- 检查卡是否过期
       IF (v_card_validity->>'is_valid')::boolean = false AND 
@@ -248,7 +248,8 @@ BEGIN
     -- 返回错误信息
     RETURN jsonb_build_object(
       'success', false,
-      'message', SQLERRM
+      'message', '签到失败: ' || SQLERRM,
+      'error', SQLERRM
     );
   END;
 END;
