@@ -3,6 +3,10 @@ import { supabase } from '../../lib/supabase';
 import { useMemberAuth } from '../../contexts/MemberAuthContext';
 import { CreditCard, Calendar, AlertCircle } from 'lucide-react';
 
+// 定义泰拳主题色
+const MUAYTHAI_RED = '#D32F2F';
+const MUAYTHAI_BLUE = '#1559CF';
+
 interface MemberCard {
   id: string;
   member_id: string;
@@ -94,6 +98,19 @@ const MemberCard: React.FC = () => {
     return card.remaining_private_sessions;
   };
 
+  // 计算会员卡有效期状态
+  const getCardStatus = (validUntil: string) => {
+    if (!validUntil) return { status: 'valid' as const, text: '永久有效 No Expiration' };
+    
+    const now = new Date();
+    const expireDate = new Date(validUntil);
+    const daysLeft = Math.ceil((expireDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysLeft < 0) return { status: 'expired' as const, text: '已过期 Expired' };
+    if (daysLeft < 7) return { status: 'warning' as const, text: `即将过期 Expires Soon (${daysLeft}天)` };
+    return { status: 'valid' as const, text: '有效 Valid' };
+  };
+
   if (loading) {
     return <div className="p-4">加载中... Loading...</div>;
   }
@@ -105,9 +122,9 @@ const MemberCard: React.FC = () => {
   if (cards.length === 0) {
     return (
       <div className="max-w-4xl mx-auto p-4">
-        <h2 className="text-2xl font-bold mb-6">会员卡 Member Cards</h2>
+        <h2 className="text-2xl font-bold mb-6 border-b-2 border-[#1559CF] pb-2 inline-block">会员卡 Member Cards</h2>
         <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-[#1559CF]" />
           <p>暂无会员卡信息</p>
           <p>No member cards found</p>
         </div>
@@ -117,38 +134,76 @@ const MemberCard: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-6">会员卡 Member Cards</h2>
+      <h2 className="text-2xl font-bold mb-6 border-b-2 border-[#1559CF] pb-2 inline-block">会员卡 Member Cards</h2>
       
       <div className="space-y-4">
-        {cards.map(card => (
-          <div key={card.id} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <CreditCard className="w-6 h-6 text-[#1559CF]" />
-                <div>
-                  <span className="font-medium">{getCardTypeTranslation(card.card_type)}</span>
-                  <span className="ml-2 text-gray-500">
-                    ({getCardDescription(card)})
-                  </span>
+        {cards.map(card => {
+          const cardStatus = getCardStatus(card.valid_until);
+          const statusColors = {
+            valid: 'bg-green-100 text-green-800',
+            warning: 'bg-yellow-100 text-yellow-800',
+            expired: 'bg-red-100 text-red-800'
+          };
+          
+          return (
+            <div key={card.id} className="bg-white rounded-lg shadow overflow-hidden">
+              <div className={`p-4 ${card.card_type === '团课' ? 'bg-blue-50' : 'bg-blue-50'} border-l-4 ${card.card_type === '团课' ? `border-[${MUAYTHAI_BLUE}]` : `border-[${MUAYTHAI_BLUE}]`}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className={`w-6 h-6 ${card.card_type === '团课' ? `text-[${MUAYTHAI_BLUE}]` : `text-[${MUAYTHAI_BLUE}]`}`} />
+                    <div>
+                      <span className="font-medium">{getCardTypeTranslation(card.card_type)}</span>
+                      <span className="ml-2 text-gray-500">
+                        ({getCardDescription(card)})
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${statusColors[cardStatus.status]}`}>
+                    {cardStatus.text}
+                  </div>
                 </div>
               </div>
-              <div className="text-sm text-gray-500">
-                剩余课时 Remaining: {getRemainingClasses(card)}
+              
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-sm text-gray-700">
+                    <span className="font-medium">剩余课时 Remaining:</span> {getRemainingClasses(card)}
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm text-gray-700">
+                    <Calendar className="w-4 h-4" />
+                    <span>
+                      {card.valid_until 
+                        ? `${new Date(card.valid_until).toLocaleDateString()}`
+                        : '无到期限制 No expiration'}
+                    </span>
+                  </div>
+                </div>
+                
+                {card.remaining_group_sessions !== undefined && (
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`${card.card_type === '团课' ? 'bg-blue-600' : 'bg-blue-600'} h-2 rounded-full`} 
+                        style={{ width: `${Math.min(100, (card.remaining_group_sessions / 10) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+                
+                {card.remaining_private_sessions !== undefined && (
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${Math.min(100, (card.remaining_private_sessions / 10) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <Calendar className="w-5 h-5" />
-              <span>
-                到期时间 Valid until: {
-                  card.valid_until 
-                    ? new Date(card.valid_until).toLocaleDateString()
-                    : '无到期限制 No expiration'
-                }
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

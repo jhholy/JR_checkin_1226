@@ -80,10 +80,10 @@ export default function MemberTable({
               姓名
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              电话
+              邮箱
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              邮箱
+              到期状态
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               会员卡
@@ -100,10 +100,40 @@ export default function MemberTable({
                 <div className="text-sm font-medium text-gray-900">{member.name}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-500">{member.phone || '-'}</div>
+                <div className="text-sm text-gray-500">{member.email || '-'}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-500">{member.email || '-'}</div>
+                <div className="text-sm">
+                  {member.membership_cards && member.membership_cards.length > 0 ? (
+                    member.membership_cards.some(card => {
+                      const validUntil = card.valid_until ? new Date(card.valid_until) : null;
+                      const now = new Date();
+                      if (!validUntil) return false;
+                      
+                      // 已过期
+                      if (validUntil < now) {
+                        return true;
+                      }
+                      
+                      // 即将过期（7天内）
+                      const diffTime = validUntil.getTime() - now.getTime();
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      return diffDays <= 7;
+                    }) ? (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        即将过期/已过期
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        正常
+                      </span>
+                    )
+                  ) : (
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                      无会员卡
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-6 py-4">
                 <div className="text-sm text-gray-900">

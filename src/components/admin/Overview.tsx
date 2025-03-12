@@ -86,7 +86,7 @@ export default function Overview({ stats }: Props) {
           color="bg-[#1559CF]" // 琉璃蓝
         />
         <StatCard
-          title="今日签到"
+          title="今日总签到"
           value={stats.todayCheckins}
           icon={CalendarCheck}
           color="bg-[#DD7E3B]" // 洗柿橙
