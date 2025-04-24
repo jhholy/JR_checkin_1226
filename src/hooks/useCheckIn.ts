@@ -5,6 +5,7 @@ import { messages } from '../utils/messageUtils';
 import { findMemberForCheckIn } from '../utils/member/search';
 import { checkInLogger } from '../utils/logger/checkIn';
 import { logger } from '../utils/logger/core';
+import { validateMembershipCard } from '../utils/validation/membershipCardValidation';
 
 interface CheckInResult {
   success: boolean;
@@ -12,6 +13,9 @@ interface CheckInResult {
   message: string;
   isDuplicate?: boolean;
   isNewMember?: boolean;
+  courseType: string;
+  needsEmailVerification?: boolean;
+  existingMember?: boolean;
 }
 
 export function useCheckIn() {
@@ -19,7 +23,7 @@ export function useCheckIn() {
   const [error, setError] = useState<string | null>(null);
 
   // 根据时间段确定课程类型
-  const getClassTypeFromTimeSlot = (timeSlot: string): string => {
+  const getClassTypeFromTimeSlot = (timeSlot: string): 'morning' | 'evening' => {
     if (timeSlot === '09:00-10:30') {
       return 'morning';
     } else if (timeSlot === '17:00-18:30') {
@@ -55,161 +59,127 @@ export function useCheckIn() {
         member_id: result.member_id
       });
 
-      // Handle new member registration
-      if (result.is_new && !result.member_id) {
-        logger.info('注册新会员', { 
-          name: formData.name,
-          email: formData.email,
-          timeSlot: formData.timeSlot
-        });
-
-        // 第一步：注册新会员
-        const { data: registerResult, error: registerError } = await supabase
-          .rpc('register_new_member', {
-            p_name: formData.name,
-            p_email: formData.email,
-            p_time_slot: formData.timeSlot,
-            p_is_private: formData.courseType === 'private',
-            p_trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
-            p_is_1v2: formData.courseType === 'private' ? formData.is1v2 : false
-          });
-
-        if (registerError) {
-          logger.error('新会员注册失败', { 
-            error: registerError,
-            details: registerError.details,
-            hint: registerError.hint
-          });
-          // 不直接抛出错误，而是返回错误结果
-          return {
-            success: false,
-            message: registerError.message || '新会员注册失败，请重试。New member registration failed, please try again.',
-            isNewMember: true
-          };
-        }
-
-        if (!registerResult) {
-          logger.error('新会员注册结果无效');
-          return {
-            success: false,
-            message: '新会员注册失败，请重试。New member registration failed, please try again.',
-            isNewMember: true
-          };
-        }
-
-        logger.info('新会员注册成功', registerResult);
-        
-        // 新会员注册时已经创建了签到记录,直接返回结果
+      // 如果需要邮箱验证
+      if (result.needs_email) {
         return {
-          success: true,
-          isExtra: true,
-          isNewMember: true,
-          message: messages.newMember
+          success: false,
+          message: '发现多个同名会员，请输入邮箱以验证身份。\nMultiple members found with the same name, please enter email to verify.',
+          needsEmailVerification: true,
+          courseType: formData.courseType
         };
       }
 
-      // Handle existing member check-in
+      // 验证member_id
       if (!result.member_id) {
-        logger.error('会员查找结果异常', { 
-          result,
-          formData 
-        });
-        throw new Error('会员查找结果异常');
+        throw new Error('无法获取会员ID');
       }
 
-      // 查找会员卡
+      // 验证私教课必填参数
+      if (formData.courseType === 'private') {
+        if (!formData.trainerId) {
+          throw new Error('私教课签到需要选择教练');
+        }
+        if (formData.is1v2 === undefined) {
+          throw new Error('私教课签到需要指定是否为1v2课程');
+        }
+      }
+
       let validCardId = null;
-      
-      // 根据课程类型确定卡类型
-      const cardType = formData.courseType === 'private' ? '私教课' : '团课';
-      
-      logger.info('查询会员卡', {
-        member_id: result.member_id,
-        card_type: cardType,
-        course_type: formData.courseType
-      });
-      
-      // 查询会员的所有卡
-      const { data: cards, error: cardsError } = await supabase
-        .from('membership_cards')
-        .select('*')
-        .eq('member_id', result.member_id)
-        .eq('card_type', cardType);
-      
-      if (cardsError) {
-        logger.error('查询会员卡失败', { error: cardsError });
-      } else {
-        logger.info(`找到 ${cards?.length || 0} 张${cardType}`, { cards });
-        
-        if (cards && cards.length > 0) {
-          // 过滤出有效的卡(未过期且有剩余课时)
-          const today = new Date();
-          const validCards = cards.filter(card => {
-            // 检查有效期
-            const isValid = !card.valid_until || new Date(card.valid_until) >= today;
-            
-            // 检查剩余课时
-            const remainingSessions = formData.courseType === 'private' 
-              ? card.remaining_private_sessions 
-              : card.remaining_group_sessions;
-            
-            const hasRemainingSessions = remainingSessions && remainingSessions > 0;
-            
-            return isValid && hasRemainingSessions;
-          });
-          
-          logger.info(`找到 ${validCards.length} 张有效${cardType}`, { validCards });
-          
-          // 在有效卡中选择最新创建的一张
-          if (validCards.length > 0) {
-            const sortedValidCards = [...validCards].sort((a, b) => 
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-            
-            validCardId = sortedValidCards[0].id;
-            logger.info('选择有效会员卡', { 
-              card_id: validCardId, 
-              card_type: sortedValidCards[0].card_type,
-              card_category: sortedValidCards[0].card_category,
-              valid_until: sortedValidCards[0].valid_until,
-              remaining_sessions: formData.courseType === 'private' 
-                ? sortedValidCards[0].remaining_private_sessions 
-                : sortedValidCards[0].remaining_group_sessions
-            });
+      if (!result.is_new) {
+        // 获取会员的有效卡
+        const { data: cards } = await supabase
+          .from('membership_cards')
+          .select('*')
+          .eq('member_id', result.member_id)
+          .gte('valid_until', new Date().toISOString().split('T')[0])
+          .order('valid_until', { ascending: true });
+
+        // 根据课程类型筛选合适的卡
+        const validCard = cards?.find(card => {
+          if (formData.courseType === 'private') {
+            return card.card_type === 'private' && card.remaining_private_sessions > 0;
           } else {
-            logger.info(`未找到有效的${cardType}`);
+            return card.card_type === 'group' && (
+              (card.card_category === 'session' && card.remaining_group_sessions > 0) ||
+              card.card_category === 'monthly'
+            );
+          }
+        });
+
+        if (validCard) {
+          const cardValidation = await validateMembershipCard(
+            validCard.id,
+            result.member_id,
+            formData.courseType
+          );
+          if (cardValidation.isValid) {
+            validCardId = cardValidation.cardId;
           }
         }
       }
 
-      // 调用handle_check_in RPC函数
-      const classType = formData.courseType === 'private' ? 'private' : getClassTypeFromTimeSlot(formData.timeSlot);
-      
-      logger.info('准备调用handle_check_in', {
+      // 验证member_id格式
+      if (!result.member_id?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        logger.error('无效的member_id格式', { member_id: result.member_id });
+        throw new Error('无效的会员ID格式');
+      }
+
+      // 验证trainer_id格式(如果存在)
+      if (formData.courseType === 'private' && formData.trainerId && 
+          !formData.trainerId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        logger.error('无效的trainer_id格式', { trainer_id: formData.trainerId });
+        throw new Error('无效的教练ID格式');
+      }
+
+      // 验证card_id格式(如果存在)
+      if (validCardId && !validCardId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        logger.error('无效的card_id格式', { card_id: validCardId });
+        throw new Error('无效的会员卡ID格式');
+      }
+
+      // 根据课程类型和时间段确定class_type
+      let classType: 'morning' | 'evening' | 'private';
+      if (formData.courseType === 'private') {
+        classType = 'private';
+      } else {
+        classType = getClassTypeFromTimeSlot(formData.timeSlot);
+      }
+
+      // 验证日期格式
+      const checkInDate = new Date().toISOString().split('T')[0];
+      if (!checkInDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        logger.error('无效的日期格式', { checkInDate });
+        throw new Error('无效的日期格式');
+      }
+
+      logger.info('参数验证通过', {
+        member_id: result.member_id,
+        trainer_id: formData.trainerId,
+        card_id: validCardId,
+        class_type: classType,
+        check_in_date: checkInDate,
+        time_slot: formData.timeSlot,
+        is_1v2: formData.is1v2
+      });
+
+      // 构造RPC调用参数
+      const rpcParams = {
         p_member_id: result.member_id,
         p_name: formData.name,
-        p_email: formData.email,
+        p_email: formData.email || null,
         p_card_id: validCardId,
         p_class_type: classType,
-        p_check_in_date: new Date().toISOString().split('T')[0],
-        p_time_slot: formData.timeSlot,
+        p_check_in_date: checkInDate,
+        p_time_slot: formData.timeSlot || null,
         p_trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
-        p_is_1v2: formData.courseType === 'private' ? formData.is1v2 : false
-      });
+        p_is_1v2: formData.courseType === 'private' ? !!formData.is1v2 : false
+      };
+
+      logger.info('准备调用handle_check_in', rpcParams);
 
       const { data: checkInResult, error: checkInError } = await supabase.rpc(
         'handle_check_in',
-        {
-          p_member_id: result.member_id,
-          p_name: formData.name,
-          p_email: formData.email,
-          p_card_id: validCardId,
-          p_class_type: classType,
-          p_check_in_date: new Date().toISOString().split('T')[0],
-          p_time_slot: formData.timeSlot,
-          p_trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
-          p_is_1v2: formData.courseType === 'private' ? formData.is1v2 : false
-        }
+        rpcParams
       );
 
       if (checkInError) {
@@ -218,7 +188,8 @@ export function useCheckIn() {
           code: checkInError.code,
           hint: checkInError.hint,
           details: checkInError.details,
-          message: checkInError.message
+          message: checkInError.message,
+          params: rpcParams
         });
         
         // Handle duplicate check-in
@@ -226,16 +197,43 @@ export function useCheckIn() {
           return {
             success: false,
             message: messages.checkIn.duplicateCheckIn,
-            isDuplicate: true
+            isDuplicate: true,
+            courseType: formData.courseType
           };
         }
 
-        throw checkInError;
+        return {
+          success: false,
+          message: checkInError.message || messages.checkIn.error,
+          courseType: formData.courseType
+        };
       }
 
       // Ensure checkInResult exists
       if (!checkInResult) {
-        throw new Error('签到记录创建失败');
+        logger.error('签到结果为空', { params: rpcParams });
+        return {
+          success: false,
+          message: messages.checkIn.error,
+          courseType: formData.courseType
+        };
+      }
+
+      // 检查返回的JSON格式
+      logger.info('签到返回结果', {
+        rawResult: checkInResult,
+        resultType: typeof checkInResult,
+        hasSuccess: 'success' in checkInResult,
+        hasMessage: 'message' in checkInResult
+      });
+
+      if (!checkInResult.success) {
+        logger.error('签到结果无效', { checkInResult, params: rpcParams });
+        return {
+          success: false,
+          message: checkInResult.message || messages.checkIn.error,
+          courseType: formData.courseType
+        };
       }
 
       logger.info('签到成功', { 
@@ -245,16 +243,19 @@ export function useCheckIn() {
         member_id: result.member_id
       });
 
-      // Return result based on isExtra flag and class type
+      // Return result based on checkInResult
       const finalResult = {
-        success: true,  // Both normal and extra check-ins are considered successful
+        success: true,
         isExtra: checkInResult.isExtra,
         isNewMember: checkInResult.isNewMember,
+        courseType: formData.courseType,
         message: checkInResult.message || (checkInResult.isExtra 
           ? (formData.courseType === 'private' 
              ? messages.checkIn.extraCheckInPrivate 
              : messages.checkIn.extraCheckInGroup)
-          : messages.checkIn.success)
+          : formData.courseType === 'private'
+            ? '私教课签到成功！课时已扣除。\nPrivate class check-in successful! Session deducted.'
+            : messages.checkIn.success)
       };
 
       logger.info('签到结果', finalResult);
@@ -291,7 +292,8 @@ export function useCheckIn() {
         success: false,
         message: errorMessage,
         isNewMember: result?.is_new,
-        isExtra: true // 如果发生错误,标记为额外签到
+        isExtra: true,
+        courseType: formData.courseType
       };
     } finally {
       setLoading(false);

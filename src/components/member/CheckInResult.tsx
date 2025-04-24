@@ -1,26 +1,68 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 
 interface Props {
   status: {
     success: boolean;
     isExtra?: boolean;
+    isNewMember?: boolean;
     message: string;
     existingMember?: boolean;
-    isDuplicate?: boolean;
     needsEmailVerification?: boolean;
-    isNewMember?: boolean;
+    isDuplicate?: boolean;
+    courseType?: 'private' | 'group';
   };
 }
 
 export default function CheckInResult({ status }: Props) {
+  // 根据签到状态生成标题
+  const getTitle = () => {
+    if (status.existingMember) {
+      return '会员已存在 Member Exists';
+    }
+    if (!status.success) {
+      if (status.needsEmailVerification) {
+        return '重名会员提醒 Duplicate Name Alert';
+      }
+      if (status.isDuplicate) {
+        return '重复签到提醒 Duplicate Check-in';
+      }
+      return '签到失败 Check-in Failed';
+    }
+    if (status.isNewMember) {
+      return '新会员签到成功！New Member Check-in Success!';
+    }
+    if (status.isExtra) {
+      return status.courseType === 'private' 
+        ? '⚠️ 私教课额外签到提醒 Private Class Extra Check-in Alert'
+        : '⚠️ 额外签到提醒 Extra Check-in Alert';
+    }
+    return status.courseType === 'private'
+      ? '私教课签到成功！Private Class Check-in Success!'
+      : '签到成功！Check-in Success!';
+  };
+
+  // 根据签到状态生成图标颜色
+  const getIconColor = () => {
+    if (!status.success) return 'text-yellow-500';
+    if (status.isExtra) return 'text-red-500';
+    return 'text-green-500';
+  };
+
+  // 根据签到状态生成消息样式
+  const getMessageStyle = () => {
+    if (!status.success) return 'text-red-600';
+    if (status.isExtra) return 'text-red-600 font-bold';
+    return 'text-gray-600';
+  };
+
   return (
     <div className="text-center py-8">
       {status.existingMember ? (
         <>
           <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-          <h2 className="text-xl font-semibold mb-2">会员已存在</h2>
+          <h2 className="text-xl font-semibold mb-2">{getTitle()}</h2>
           <p className="text-gray-600 mb-6 whitespace-pre-line">{status.message}</p>
           <Link
             to="/member"
@@ -31,12 +73,30 @@ export default function CheckInResult({ status }: Props) {
         </>
       ) : status.success ? (
         <>
-          <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-500" />
-          <h2 className="text-xl font-semibold mb-2">
-            {status.isNewMember ? '新会员签到成功！' : 
-             status.isExtra ? '额外签到成功！' : '签到成功！'}
-          </h2>
-          <p className="text-gray-600 mb-6 whitespace-pre-line">{status.message}</p>
+          {status.isExtra ? (
+            <AlertCircle className={`w-16 h-16 mx-auto mb-4 ${getIconColor()}`} />
+          ) : (
+            <CheckCircle className={`w-16 h-16 mx-auto mb-4 ${getIconColor()}`} />
+          )}
+          <h2 className="text-xl font-semibold mb-2">{getTitle()}</h2>
+          <p className={`mb-6 whitespace-pre-line ${getMessageStyle()}`}>{status.message}</p>
+          {status.isExtra && (
+            <div className="text-sm text-gray-500 mb-4">
+              {status.courseType === 'private' ? (
+                <>
+                  提示：本次签到未扣除私教课时，请联系管理员购买或续费私教卡。
+                  <br />
+                  Note: No private session was deducted. Please contact admin to purchase or renew your private training card.
+                </>
+              ) : (
+                <>
+                  提示：本次签到未扣除课时，请联系管理员购买或续费会员卡。
+                  <br />
+                  Note: No session was deducted. Please contact admin to purchase or renew your membership card.
+                </>
+              )}
+            </div>
+          )}
           <p className="text-sm text-gray-500">
             页面将在3秒后自动返回首页...
             <br />
@@ -46,10 +106,7 @@ export default function CheckInResult({ status }: Props) {
       ) : (
         <>
           <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-          <h2 className="text-xl font-semibold mb-2">
-            {status.needsEmailVerification ? '重名会员提醒' : 
-             status.isDuplicate ? '重复签到提醒' : '签到失败'}
-          </h2>
+          <h2 className="text-xl font-semibold mb-2">{getTitle()}</h2>
           <p className="text-gray-600 mb-6 whitespace-pre-line">{status.message}</p>
           <Link
             to="/"
