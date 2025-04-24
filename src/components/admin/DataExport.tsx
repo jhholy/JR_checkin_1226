@@ -93,6 +93,12 @@ export default function DataExport() {
 
       if (membersError) throw membersError;
 
+      // 检查是否有数据
+      if (!members || members.length === 0) {
+        setError('没有可导出的会员数据 No member data to export');
+        return;
+      }
+
       // 转换为CSV格式
       const records: MemberRecord[] = members.map((member: Member & { membership_cards: MembershipCard[] }) => ({
         '姓名': member.name,
@@ -157,6 +163,12 @@ export default function DataExport() {
         .order('created_at', { ascending: false });
 
       if (checkInsError) throw checkInsError;
+
+      // 检查是否有数据
+      if (!checkIns || checkIns.length === 0) {
+        setError('没有可导出的签到记录 No check-in records to export');
+        return;
+      }
 
       // 转换为CSV格式
       const records: CheckInRecord[] = checkIns.map((record: CheckIn & { 
