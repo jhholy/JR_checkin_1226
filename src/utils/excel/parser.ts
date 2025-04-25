@@ -6,18 +6,28 @@ import { CardType, CardSubtype, TrainerType } from '../../types/database';
 
 // 定义卡类型映射
 const CARD_TYPE_MAPPING = {
-  '课程卡': 'class',
-  '时间卡': 'time',
-  '私教卡': 'private'
+  '团课': 'group',
+  '私教课': 'private'
+} as const;
+
+// 定义卡类别映射
+const CARD_CATEGORY_MAPPING = {
+  '月卡': 'monthly',
+  '课时卡': 'session'
 } as const;
 
 // 定义卡子类型映射
 const CARD_SUBTYPE_MAPPING = {
-  '团体课': 'group',
-  '私教课': 'private',
-  '月卡': 'monthly',
-  '季卡': 'quarterly',
-  '年卡': 'yearly'
+  // 团课月卡
+  '单次月卡': 'single_monthly',
+  '双次月卡': 'double_monthly',
+  // 团课课时卡
+  '单次卡': 'single_class',
+  '两次卡': 'two_classes',
+  '10次卡': 'ten_classes',
+  // 私教卡
+  '单次私教': 'single_private',
+  '10次私教': 'ten_private'
 } as const;
 
 // 定义教练等级映射
@@ -109,7 +119,7 @@ export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
           phone: row.phone ? String(row.phone).trim() : null,
           card_type: row.card_type as CardType || null,
           card_subtype: row.card_subtype as CardSubtype || null,
-          remaining_group_sessions: row.card_type === 'class' ? Number(row.remaining_sessions) : null,
+          remaining_group_sessions: row.card_type === 'group' ? Number(row.remaining_sessions) : null,
           remaining_private_sessions: row.card_type === 'private' ? Number(row.remaining_sessions) : null,
           valid_until: row.valid_until ? formatDateForDB(row.valid_until) : null,
           trainer_type: row.trainer_type as TrainerType || null,
