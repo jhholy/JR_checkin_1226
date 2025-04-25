@@ -6,6 +6,7 @@ export interface ParsedRow {
     card: {
       card_type: CardType;
       card_subtype: CardSubtype;
+      card_category?: string;
       remaining_group_sessions?: number;
       remaining_private_sessions?: number;
       valid_until?: string;
@@ -35,6 +36,7 @@ export interface ExcelMemberRow {
   email?: string;
   phone?: string;
   card_type?: CardType;
+  card_category?: string;
   card_subtype?: CardSubtype;
   remaining_group_sessions?: number;
   remaining_private_sessions?: number;
@@ -59,6 +61,7 @@ export interface ParsedMemberData {
   email: string | null;
   phone: string | null;
   card_type: CardType | null;
+  card_category: string | null;
   card_subtype: CardSubtype | null;
   remaining_group_sessions: number | null;
   remaining_private_sessions: number | null;

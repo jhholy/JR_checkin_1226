@@ -6,25 +6,27 @@ import { CardType, CardSubtype, TrainerType } from '../../types/database';
 
 // 定义卡类型映射
 const CARD_TYPE_MAPPING = {
-  '团课': 'group',
-  '私教课': 'private'
+  '团课': 'class',  // 映射到CardType中的"class"
+  '月卡': 'monthly',  // 映射到CardType中的"monthly"
+  '私教课': 'private'  // 映射到CardType中的"private"
 } as const;
 
 // 定义卡类别映射
 const CARD_CATEGORY_MAPPING = {
+  '课时卡': 'group',
   '月卡': 'monthly',
-  '课时卡': 'session'
+  '私教': 'private'
 } as const;
 
 // 定义卡子类型映射
 const CARD_SUBTYPE_MAPPING = {
-  // 团课月卡
-  '单次月卡': 'single_monthly',
-  '双次月卡': 'double_monthly',
   // 团课课时卡
   '单次卡': 'single_class',
   '两次卡': 'two_classes',
   '10次卡': 'ten_classes',
+  // 月卡
+  '单次月卡': 'single_monthly',
+  '双次月卡': 'double_monthly',
   // 私教卡
   '单次私教': 'single_private',
   '10次私教': 'ten_private'
@@ -46,6 +48,8 @@ const HEADER_MAPPING = {
   '电话 Phone': 'phone',
   '卡类型': 'card_type',
   '卡类型 Card Type': 'card_type',
+  '卡类别': 'card_category',
+  '卡类别 Card Category': 'card_category',
   '卡子类型': 'card_subtype',
   '卡子类型 Card Subtype': 'card_subtype',
   '剩余团课课时': 'remaining_group_sessions',
@@ -98,6 +102,10 @@ export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
           else if (englishKey === 'trainer_type' && typeof value === 'string') {
             mappedRow[englishKey] = TRAINER_TYPE_MAPPING[value as keyof typeof TRAINER_TYPE_MAPPING] || value;
           }
+          // 转换卡类别
+          else if (englishKey === 'card_category' && typeof value === 'string') {
+            mappedRow[englishKey] = CARD_CATEGORY_MAPPING[value as keyof typeof CARD_CATEGORY_MAPPING] || value;
+          }
           else {
             mappedRow[englishKey] = value;
           }
@@ -119,8 +127,9 @@ export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
           phone: row.phone ? String(row.phone).trim() : null,
           card_type: row.card_type as CardType || null,
           card_subtype: row.card_subtype as CardSubtype || null,
-          remaining_group_sessions: row.card_type === 'group' ? Number(row.remaining_sessions) : null,
-          remaining_private_sessions: row.card_type === 'private' ? Number(row.remaining_sessions) : null,
+          card_category: row.card_category || null,
+          remaining_group_sessions: row.remaining_group_sessions ? Number(row.remaining_group_sessions) : null,
+          remaining_private_sessions: row.remaining_private_sessions ? Number(row.remaining_private_sessions) : null,
           valid_until: row.valid_until ? formatDateForDB(row.valid_until) : null,
           trainer_type: row.trainer_type as TrainerType || null,
           notes: row.notes || null
@@ -142,10 +151,11 @@ export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
               card: {
                 card_type: memberData.card_type!,
                 card_subtype: memberData.card_subtype!,
-                remaining_group_sessions: memberData.remaining_group_sessions,
-                remaining_private_sessions: memberData.remaining_private_sessions,
-                valid_until: memberData.valid_until,
-                trainer_type: memberData.trainer_type
+                card_category: memberData.card_category || undefined,
+                remaining_group_sessions: memberData.remaining_group_sessions || undefined,
+                remaining_private_sessions: memberData.remaining_private_sessions || undefined,
+                valid_until: memberData.valid_until || undefined,
+                trainer_type: memberData.trainer_type || undefined
               }
             },
             errors: [],
@@ -155,7 +165,23 @@ export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
 
         // 如果验证失败,返回错误信息
         return {
-          data: { member: {}, card: {} },
+          data: { 
+            member: {
+              name: '', // 提供默认值
+              email: null,
+              phone: null,
+              notes: null
+            }, 
+            card: {
+              card_type: 'class' as CardType, // 使用英文默认值
+              card_subtype: 'single_class' as CardSubtype, // 使用英文默认值
+              card_category: undefined,
+              remaining_group_sessions: undefined,
+              remaining_private_sessions: undefined,
+              valid_until: undefined,
+              trainer_type: undefined
+            } 
+          },
           errors,
           rowNumber: index + 2
         };
