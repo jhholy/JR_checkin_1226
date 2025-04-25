@@ -52,7 +52,10 @@ export default function ExcelImport() {
           .select()
           .single();
 
-        if (memberError) throw memberError;
+        if (memberError) {
+          console.error('会员导入错误:', memberError);
+          throw memberError;
+        }
 
         // 2. 创建会员卡
         if (memberData) {
@@ -70,7 +73,7 @@ export default function ExcelImport() {
 
       alert('导入成功！Import successful!');
     } catch (err) {
-      console.error('Import failed:', err);
+      console.error('导入失败详情:', err);
       alert('导入失败，请检查控制台了解详情。Import failed. Please check the console for details.');
     } finally {
       setImporting(false);

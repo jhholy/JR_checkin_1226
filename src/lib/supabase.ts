@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Member, CheckIn } from '../types/database';
+import type { Member, CheckIn, MembershipCard } from '../types/database';
 
 // 定义数据库类型
 interface Database {
@@ -9,6 +9,11 @@ interface Database {
         Row: Member
         Insert: Omit<Member, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<Member, 'id'>>
+      }
+      membership_cards: {
+        Row: MembershipCard
+        Insert: Omit<MembershipCard, 'id' | 'created_at'>
+        Update: Partial<Omit<MembershipCard, 'id'>>
       }
       check_ins: {
         Row: CheckIn

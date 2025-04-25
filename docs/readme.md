@@ -123,10 +123,7 @@ graph TD
 - **remaining_group_sessions**: 剩余团课课时数（仅团课课时卡适用）
 - **remaining_private_sessions**: 剩余私教课时数（仅私教课适用）
 - **valid_until**: 有效期
-  - 团课月卡：购买日起30天
-  - 团课10次卡：购买日起3个月
-  - 私教10次卡：购买日起1个月
-  - 其他卡：无到期限制
+：视情况而定，管理员手动输入
 
 ### 3. 签到记录 (check_ins表)
 - **id**: 签到ID
