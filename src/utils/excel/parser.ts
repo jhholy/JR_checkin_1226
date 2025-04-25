@@ -188,6 +188,10 @@ export const parseExcelFile = async (file: File): Promise<ParsedRow[]> => {
       });
 
     console.log('验证后的数据:', validatedRows);
+    console.log('验证错误详情:', validatedRows.map(row => ({
+      rowNumber: row.rowNumber,
+      errors: row.errors
+    })));
     return validatedRows;
   } catch (err) {
     console.error('Excel解析错误:', err);
