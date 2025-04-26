@@ -7,6 +7,65 @@ import { CreditCard, Calendar, AlertCircle } from 'lucide-react';
 const MUAYTHAI_RED = '#D32F2F';
 const MUAYTHAI_BLUE = '#1559CF';
 
+// 卡类型映射 (与EditMemberModal.tsx一致 - 添加双语显示)
+const getCardTypeDisplay = (type: string | null): string => {
+  if (!type) return '未知 Unknown';
+  if (type === 'class') return '团课 Group Class';
+  if (type === 'private') return '私教课 Private Class';
+  if (type === '团课') return '团课 Group Class';
+  if (type === '私教课') return '私教课 Private Class';
+  return type; // 返回原值
+};
+
+// 卡类别映射 (与EditMemberModal.tsx一致 - 添加双语显示)
+const getCardCategoryDisplay = (category: string | null): string => {
+  if (!category) return '';
+  if (category === 'group') return '课时卡 Session';
+  if (category === 'private') return '私教 Private';
+  if (category === 'monthly') return '月卡 Monthly';
+  if (category === '课时卡') return '课时卡 Session';
+  if (category === '私教') return '私教 Private';
+  if (category === '月卡') return '月卡 Monthly';
+  return category; // 返回原值
+};
+
+// 卡子类型映射 (与EditMemberModal.tsx一致 - 添加双语显示)
+const getCardSubtypeDisplay = (subtype: string | null): string => {
+  if (!subtype) return '';
+  
+  // 团课卡子类型
+  if (subtype === 'ten_classes' || subtype === 'group_ten_class') return '10次卡 Ten Classes';
+  if (subtype === 'single_class') return '单次卡 Single Class';
+  if (subtype === 'two_classes') return '两次卡 Two Classes';
+  
+  // 私教卡子类型
+  if (subtype === 'ten_private') return '10次私教 Ten Private';
+  if (subtype === 'single_private') return '单次私教 Single Private';
+  
+  // 月卡子类型
+  if (subtype === 'single_monthly') return '单次月卡 Single Monthly';
+  if (subtype === 'double_monthly') return '双次月卡 Double Monthly';
+  
+  // 中文类型也添加英文翻译
+  if (subtype === '10次卡') return '10次卡 Ten Classes';
+  if (subtype === '单次卡') return '单次卡 Single Class';
+  if (subtype === '两次卡') return '两次卡 Two Classes';
+  if (subtype === '10次私教') return '10次私教 Ten Private';
+  if (subtype === '单次私教') return '单次私教 Single Private';
+  if (subtype === '单次月卡') return '单次月卡 Single Monthly';
+  if (subtype === '双次月卡') return '双次月卡 Double Monthly';
+  
+  return subtype; // 返回原值
+};
+
+// 教练类型映射 (与EditMemberModal.tsx一致 - 添加双语显示)
+const getTrainerTypeDisplay = (type: string | null): string => {
+  if (!type) return '';
+  if (type === 'jr') return 'JR教练 (JR)';
+  if (type === 'senior') return '高级教练 (Senior)';
+  return type;
+};
+
 interface MemberCard {
   id: string;
   member_id: string;
@@ -78,21 +137,22 @@ const MemberCard: React.FC = () => {
     };
   }, [member?.id]);
 
+  // 获取卡片完整描述（双语显示）
   const getCardDescription = (card: MemberCard) => {
-    if (card.card_type === '团课') {
-      return `${card.card_category || ''} ${card.card_subtype}`;
-    }
-    return `${card.card_subtype}${card.trainer_type ? ` (${card.trainer_type})` : ''}`;
+    const cardCategory = getCardCategoryDisplay(card.card_category);
+    const cardSubtype = getCardSubtypeDisplay(card.card_subtype);
+    const trainerInfo = card.trainer_type ? ` (${getTrainerTypeDisplay(card.trainer_type)})` : '';
+    
+    return `${cardCategory} ${cardSubtype}${trainerInfo}`.trim();
   };
 
+  // 获取卡类型（已使用getCardTypeDisplay替换）
   const getCardTypeTranslation = (cardType: string) => {
-    if (cardType === '团课') return '团课 Group Class';
-    if (cardType === '私教课') return '私教课 Private Class';
-    return cardType;
+    return getCardTypeDisplay(cardType);
   };
 
   const getRemainingClasses = (card: MemberCard) => {
-    if (card.card_type === '团课') {
+    if (card.card_type === '团课' || card.card_type?.toLowerCase() === 'class') {
       return card.remaining_group_sessions;
     }
     return card.remaining_private_sessions;
@@ -152,7 +212,7 @@ const MemberCard: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <CreditCard className={`w-6 h-6 ${card.card_type === '团课' ? `text-[${MUAYTHAI_BLUE}]` : `text-[${MUAYTHAI_BLUE}]`}`} />
                     <div>
-                      <span className="font-medium">{getCardTypeTranslation(card.card_type)}</span>
+                      <span className="font-medium">{getCardTypeDisplay(card.card_type)}</span>
                       <span className="ml-2 text-gray-500">
                         ({getCardDescription(card)})
                       </span>
