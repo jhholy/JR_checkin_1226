@@ -4,6 +4,50 @@ import { Database } from '../../types/database';
 import CardForm from './CardForm';
 import { XCircle, CheckCircle } from 'lucide-react';
 
+// 卡类型映射
+const getCardTypeDisplay = (type: string | null): string => {
+  if (!type) return '未知';
+  if (type === 'class') return '团课';
+  if (type === 'private') return '私教课';
+  return type; // 返回原值，以防已经是中文
+};
+
+// 卡类别映射
+const getCardCategoryDisplay = (category: string | null): string => {
+  if (!category) return '';
+  if (category === 'group') return '课时卡';
+  if (category === 'private') return '私教';
+  if (category === 'monthly') return '月卡';
+  return category; // 返回原值，以防已经是中文
+};
+
+// 卡子类型映射
+const getCardSubtypeDisplay = (subtype: string | null): string => {
+  if (!subtype) return '';
+  
+  // 团课卡子类型
+  if (subtype === 'ten_classes' || subtype === 'group_ten_class') return '10次卡';
+  if (subtype === 'single_class') return '单次卡';
+  if (subtype === 'two_classes') return '两次卡';
+  
+  // 私教卡子类型
+  if (subtype === 'ten_private') return '10次私教';
+  if (subtype === 'single_private') return '单次私教';
+  
+  // 月卡子类型
+  if (subtype === 'single_monthly') return '单次月卡';
+  if (subtype === 'double_monthly') return '双次月卡';
+  
+  return subtype; // 返回原值，以防已经是中文
+};
+
+// 教练类型映射
+const getTrainerTypeDisplay = (type: string | null): string => {
+  if (!type) return '';
+  if (type === 'jr') return 'JR教练';
+  if (type === 'senior') return '高级教练';
+  return type;
+};
 type Member = Database['public']['Tables']['members']['Row'];
 type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
 
@@ -13,6 +57,7 @@ interface EditMemberModalProps {
   onUpdate: (memberId: string, updates: Partial<Member>) => Promise<void>;
   refreshMemberList: () => void;
 }
+
 
 export default function EditMemberModal({ member, onClose, onUpdate, refreshMemberList }: EditMemberModalProps) {
   const [formData, setFormData] = useState({
@@ -386,13 +431,15 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
                       <div className="flex justify-between items-center">
                         <div>
                           <p className="text-sm font-medium text-gray-900">
-                            {card.card_type} {card.card_category} {card.card_subtype}
-                            {card.trainer_type && ` (${card.trainer_type})`}
+                            {getCardTypeDisplay(card.card_type)} {getCardCategoryDisplay(card.card_category)} {getCardSubtypeDisplay(card.card_subtype)}
+                            {card.trainer_type && ` (${getTrainerTypeDisplay(card.trainer_type)})`}
                           </p>
                           <p className="text-sm text-gray-500">
                             {card.card_type === '团课' ? 
                               `剩余团课: ${card.remaining_group_sessions ?? '未设置'}` : 
-                              `剩余私教: ${card.remaining_private_sessions ?? '未设置'}`}
+                              card.card_type === '私教课' ? 
+                              `剩余私教: ${card.remaining_private_sessions ?? '未设置'}` :
+                              `剩余课时: ${card.remaining_group_sessions ?? card.remaining_private_sessions ?? '未设置'}`}
                             {card.valid_until && ` | 有效期至: ${new Date(card.valid_until).toLocaleDateString()}`}
                           </p>
                         </div>

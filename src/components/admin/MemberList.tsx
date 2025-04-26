@@ -15,7 +15,61 @@ type CardType = Database['public']['Enums']['CardType'];
 type ExtendedCardType = CardType | 'no_card' | '团课' | '私教课' | 'all_cards' | '';
 type CardSubtype = Database['public']['Enums']['CardSubtype'];
 
-// 卡类型和子类型的映射关系
+// 增强卡类型映射函数
+const getCardTypeDisplay = (type: string | null): string => {
+  if (!type) return '未知';
+  
+  // 转为小写处理
+  const normalizedType = typeof type === 'string' ? type.toLowerCase() : '';
+  
+  if (normalizedType === 'class' || normalizedType.includes('团课')) {
+    return '团课';
+  }
+  if (normalizedType === 'private' || normalizedType.includes('私教')) {
+    return '私教课';
+  }
+  
+  return type; // 返回原值
+};
+
+// 卡类别映射 - 与EditMemberModal中保持一致
+const getCardCategoryDisplay = (category: string | null): string => {
+  if (!category) return '';
+  if (category === 'group') return '课时卡';
+  if (category === 'private') return '私教';
+  if (category === 'monthly') return '月卡';
+  return category;
+};
+
+// 卡子类型映射 - 与EditMemberModal中保持一致
+const getCardSubtypeDisplay = (subtype: string | null): string => {
+  if (!subtype) return '';
+  
+  // 团课卡子类型
+  if (subtype === 'ten_classes' || subtype === 'group_ten_class') return '10次卡';
+  if (subtype === 'single_class') return '单次卡';
+  if (subtype === 'two_classes') return '两次卡';
+  
+  // 私教卡子类型
+  if (subtype === 'ten_private') return '10次私教';
+  if (subtype === 'single_private') return '单次私教';
+  
+  // 月卡子类型
+  if (subtype === 'single_monthly') return '单次月卡';
+  if (subtype === 'double_monthly') return '双次月卡';
+  
+  return subtype;
+};
+
+// 教练类型映射 - 与EditMemberModal中保持一致
+const getTrainerTypeDisplay = (type: string | null): string => {
+  if (!type) return '';
+  if (type === 'jr') return 'JR教练';
+  if (type === 'senior') return '高级教练';
+  return type;
+};
+
+// 卡类型和子类型的映射关系 - 保留原有逻辑，但使用中文名称
 const cardTypeToSubtypes: Record<ExtendedCardType, string[]> = {
   'monthly': ['单次月卡', '双次月卡'],
   'class': ['单次卡', '两次卡', '10次卡'],
@@ -27,7 +81,7 @@ const cardTypeToSubtypes: Record<ExtendedCardType, string[]> = {
   '': []
 };
 
-// 卡子类型的显示名称
+// 修改后的卡子类型的显示名称
 const cardSubtypeLabels: Record<string, string> = {
   '单次月卡': '团课单次月卡 Single Monthly',
   '双次月卡': '团课双次月卡 Double Monthly',
@@ -48,6 +102,54 @@ const cardSubtypeToDbValue: Record<string, string> = {
 };
 
 const PAGE_SIZE = 10;
+
+// 计算会员卡有效期状态
+const getCardStatus = (validUntil: string | null) => {
+  if (!validUntil) return { status: 'valid' as const, text: '无有效期限制' };
+  
+  const now = new Date();
+  const expireDate = new Date(validUntil);
+  const daysLeft = Math.ceil((expireDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysLeft < 0) return { status: 'expired' as const, text: '已过期' };
+  if (daysLeft < 7) return { status: 'warning' as const, text: `即将过期 (${daysLeft}天)` };
+  return { status: 'valid' as const, text: '有效' };
+};
+
+// 导出统一的卡信息格式化函数，供MemberTable使用
+export const formatCardInfo = (card: MembershipCard): React.ReactNode => {
+  // 调试输出，查看卡信息的原始值
+  console.log('Card info in list:', {
+    type: card.card_type,
+    category: card.card_category,
+    subtype: card.card_subtype,
+    trainer: card.trainer_type
+  });
+  
+  // 计算有效期状态 - 仍然保留计算逻辑，以便未来需要使用
+  const cardStatus = card.valid_until ? getCardStatus(card.valid_until) : { status: 'valid', text: '无有效期限制' };
+  
+  return (
+    <div>
+      <div className="font-medium">
+        {getCardTypeDisplay(card.card_type)} {getCardCategoryDisplay(card.card_category)} {getCardSubtypeDisplay(card.card_subtype)}
+        {card.trainer_type && ` (${getTrainerTypeDisplay(card.trainer_type)})`}
+      </div>
+      <div className="text-xs text-gray-500 mt-1">
+        {card.card_type === '团课' || card.card_type === 'class' ? 
+          `剩余团课: ${card.remaining_group_sessions ?? '未设置'}` : 
+          card.card_type === '私教课' || card.card_type === 'private' ? 
+          `剩余私教: ${card.remaining_private_sessions ?? '未设置'}` :
+          `剩余课时: ${card.remaining_group_sessions ?? card.remaining_private_sessions ?? '未设置'}`}
+        {card.valid_until && 
+          <span>
+            {' | '}有效期至: {new Date(card.valid_until).toLocaleDateString('zh-CN')}
+          </span>}
+        {!card.valid_until && <span>{' | '}无有效期限制</span>}
+      </div>
+    </div>
+  );
+};
 
 export default function MemberList() {
   const [searchTerm, setSearchTerm] = useState('');

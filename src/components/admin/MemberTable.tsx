@@ -3,6 +3,7 @@ import { Database } from '../../types/database';
 import { formatCardType, formatCardValidity, formatRemainingClasses } from '../../utils/membership/formatters';
 import EditMemberModal from './EditMemberModal';
 import { supabase } from '../../lib/supabase';
+import { formatCardInfo } from './MemberList';
 
 type Member = Database['public']['Tables']['members']['Row'];
 type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
@@ -105,32 +106,66 @@ export default function MemberTable({
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm">
                   {member.membership_cards && member.membership_cards.length > 0 ? (
-                    member.membership_cards.some(card => {
-                      const validUntil = card.valid_until ? new Date(card.valid_until) : null;
+                    (() => {
                       const now = new Date();
-                      if (!validUntil) return false;
+                      // 检查是否有过期的卡
+                      const hasExpiredCard = member.membership_cards.some(card => {
+                        const validUntil = card.valid_until ? new Date(card.valid_until) : null;
+                        return validUntil && validUntil < now;
+                      });
+
+                      // 如果有过期卡，显示"已过期"
+                      if (hasExpiredCard) {
+                        return (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            已过期 Expired
+                          </span>
+                        );
+                      }
+
+                      // 检查是否有即将过期的卡（7天内）
+                      const sevenDaysFromNow = new Date();
+                      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
                       
-                      // 已过期
-                      if (validUntil < now) {
-                        return true;
+                      const hasUpcomingExpiryCard = member.membership_cards.some(card => {
+                        const validUntil = card.valid_until ? new Date(card.valid_until) : null;
+                        return validUntil && validUntil >= now && validUntil <= sevenDaysFromNow;
+                      });
+
+                      // 如果有即将过期的卡，显示"即将到期"
+                      if (hasUpcomingExpiryCard) {
+                        return (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            即将到期 Expiring soon
+                          </span>
+                        );
                       }
                       
-                      // 即将过期（7天内）
-                      const diffTime = validUntil.getTime() - now.getTime();
-                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                      return diffDays <= 7;
-                    }) ? (
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                        即将过期/已过期
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        正常
-                      </span>
-                    )
+                      // 检查是否有课时不足的卡（剩余课时<=2）
+                      const hasLowClassesCard = member.membership_cards.some(card => 
+                        // 简化逻辑：只要剩余团课次数是有效数字且<=2即可
+                        typeof card.remaining_group_sessions === 'number' && card.remaining_group_sessions <= 2
+                      );
+                      
+                      // 如果有课时不足的卡，显示"课时不足"
+                      if (hasLowClassesCard) {
+                        return (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                            课时不足 Low Classes
+                          </span>
+                        );
+                      }
+
+                      // 否则显示"正常"
+                      return (
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          正常 Active
+                        </span>
+                      );
+                    })()
                   ) : (
                     <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                      无会员卡
+                      无会员卡 No Card
                     </span>
                   )}
                 </div>
@@ -140,12 +175,8 @@ export default function MemberTable({
                   {member.membership_cards && member.membership_cards.length > 0 ? (
                     <ul className="list-disc pl-5">
                       {member.membership_cards.map((card) => (
-                        <li key={card.id} className="mb-1">
-                          <span className="font-medium">{formatCardType(card)}</span>
-                          <br />
-                          <span className="text-xs text-gray-500">
-                            {formatRemainingClasses(card)} | {formatCardValidity(card)}
-                          </span>
+                        <li key={card.id} className="mb-2">
+                          {formatCardInfo(card)}
                         </li>
                       ))}
                     </ul>

@@ -1,8 +1,7 @@
 import { ExcelRow, ParsedRow, ParsedMemberData, ParsedCheckInData } from './types';
-import { Member, MembershipType, CardType, CardSubtype, ClassType, TrainerType } from '../../types/database';
+import { Member, CardType, CardSubtype, ClassType, TrainerType } from '../../types/database';
 import { validateName } from '../nameValidation';
 import { validateEmail } from '../validation/emailValidation';
-import { isValidMembershipType, validateMembershipData } from '../validation/membershipValidation';
 
 export const validateRow = (row: ExcelRow, rowNumber: number): ParsedRow => {
   const errors: string[] = [];
@@ -10,44 +9,51 @@ export const validateRow = (row: ExcelRow, rowNumber: number): ParsedRow => {
 
   if (!name) {
     return {
-      data: {},
-      errors: ['Name is required'],
+      data: {
+        member: {
+          name: '',
+          email: null,
+          phone: null
+        },
+        card: {
+          card_type: 'class' as CardType,
+          card_subtype: 'single_class' as CardSubtype
+        }
+      },
+      errors: ['姓名不能为空 Name is required'],
       rowNumber
     };
   }
 
-  // Clean and validate membership type
-  const membershipType = row.membership?.trim() || null;
-  const validatedMembership = isValidMembershipType(membershipType) ? membershipType : null;
-
-  const parsedData: Partial<Member> = {
+  // 基础会员数据
+  const memberData: Partial<Member> = {
     name,
     email: row.email?.trim() || null,
-    membership: validatedMembership,
-    remaining_classes: row.remaining_classes ? Number(row.remaining_classes) : 0,
-    membership_expiry: row.membership_expiry || null,
-    is_new_member: false
+    phone: null
   };
 
-  // Validate fields
+  // 卡数据
+  const cardData = {
+    card_type: 'class' as CardType,
+    card_subtype: 'single_class' as CardSubtype,
+    remaining_group_sessions: row.remaining_classes ? Number(row.remaining_classes) : undefined,
+    valid_until: row.membership_expiry || undefined
+  };
+
+  // 验证字段
   if (!validateName(name)) {
-    errors.push(`Invalid name format: "${name}"`);
+    errors.push(`无效的姓名格式 Invalid name format: "${name}"`);
   }
 
-  if (parsedData.email && !validateEmail(parsedData.email)) {
-    errors.push('Invalid email format');
+  if (memberData.email && !validateEmail(memberData.email)) {
+    errors.push('无效的邮箱格式 Invalid email format');
   }
-
-  // Validate membership data
-  const membershipErrors = validateMembershipData(
-    membershipType,
-    parsedData.remaining_classes,
-    parsedData.membership_expiry
-  );
-  errors.push(...membershipErrors);
 
   return {
-    data: parsedData,
+    data: {
+      member: memberData,
+      card: cardData
+    },
     errors,
     rowNumber
   };
@@ -56,7 +62,7 @@ export const validateRow = (row: ExcelRow, rowNumber: number): ParsedRow => {
 // 验证卡类型
 const validateCardType = (type: string | null): type is CardType => {
   if (!type) return true;
-  return ['class', 'time', 'private'].includes(type);
+  return ['class', 'monthly', 'private'].includes(type);
 };
 
 // 验证卡子类型
@@ -64,8 +70,8 @@ const validateCardSubtype = (subtype: string | null, cardType: CardType | null):
   if (!subtype || !cardType) return true;
 
   const validSubtypes = {
-    class: ['group', 'private'],
-    time: ['monthly', 'quarterly', 'yearly'],
+    class: ['single_class', 'two_classes', 'ten_classes'],
+    monthly: ['single_monthly', 'double_monthly'],
     private: ['single_private', 'ten_private']
   };
 
@@ -133,10 +139,10 @@ export const validateMemberData = (data: ParsedMemberData): string[] => {
 
   // 验证课时数
   if (data.card_type === 'class' || data.card_type === 'private') {
-    if (!validateSessions(data.remaining_group_sessions)) {
+    if (data.remaining_group_sessions !== null && !validateSessions(data.remaining_group_sessions)) {
       errors.push('无效的团课课时数 Invalid group sessions');
     }
-    if (!validateSessions(data.remaining_private_sessions)) {
+    if (data.remaining_private_sessions !== null && !validateSessions(data.remaining_private_sessions)) {
       errors.push('无效的私教课时数 Invalid private sessions');
     }
   }

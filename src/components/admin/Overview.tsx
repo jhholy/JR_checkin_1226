@@ -1,5 +1,5 @@
-import React from 'react';
-import { Users, CalendarCheck, AlertCircle, PieChart, BarChart } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, CalendarCheck, AlertCircle, PieChart, BarChart, Calendar } from 'lucide-react';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import StatCard from '../common/StatCard';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -74,6 +74,144 @@ export default function Overview({ stats }: Props) {
   const { trends, loading: trendsLoading, error: trendsError } = useCheckInTrends();
   const { cardStats, loading: cardStatsLoading, error: cardStatsError } = useMembershipCardStats();
   const { trainerStats, loading: trainerStatsLoading, error: trainerStatsError } = useTrainerWorkload();
+  
+  // 添加时间范围选择状态
+  const [timeRange, setTimeRange] = useState<'thisMonth' | 'lastMonth' | 'last3Months' | 'thisQuarter' | 'thisYear'>('thisMonth');
+
+  // 处理会员卡数据，计算百分比
+  const processCardStats = () => {
+    if (!cardStats || cardStats.length === 0) {
+      return [{ type: '暂无数据', value: 1, percentage: '100%' }];
+    }
+
+    const total = cardStats.reduce((sum, stat) => sum + stat.count, 0);
+    
+    return cardStats.map(stat => ({
+      type: stat.cardType,
+      value: stat.count,
+      percentage: `${Math.round((stat.count / total) * 100)}%`
+    }));
+  };
+
+  // 获取处理后的会员卡分布数据
+  const cardDistributionData = processCardStats();
+
+  // 获取简化的会员卡类型（合并为团课卡和私教卡）
+  const simplifyCardTypes = () => {
+    if (!cardStats || cardStats.length === 0) {
+      return [{ type: '暂无数据', value: 1, percentage: '100%' }];
+    }
+
+    const groupTypeMap = new Map<string, number>();
+    
+    // 根据卡类型分组，使用与EditMemberModal.tsx一致的映射
+    cardStats.forEach(stat => {
+      let displayType = '';
+      
+      // 使用与EditMemberModal.tsx相同的映射规则
+      if (stat.cardType.includes('私教') || stat.cardType.toLowerCase().includes('private')) {
+        displayType = '私教卡';
+      } else {
+        displayType = '团课卡';
+      }
+      
+      groupTypeMap.set(
+        displayType,
+        (groupTypeMap.get(displayType) || 0) + stat.count
+      );
+    });
+    
+    const total = cardStats.reduce((sum, stat) => sum + stat.count, 0);
+    
+    // 转换为所需格式
+    return Array.from(groupTypeMap.entries())
+      .map(([type, value]) => ({
+        type,
+        value,
+        percentage: `${Math.round((value / total) * 100)}%`
+      }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  // 获取简化后的会员卡分布数据（用于饼图）
+  const simplifiedCardData = simplifyCardTypes();
+
+  // 根据卡类型获取背景色（确保颜色一致性）
+  const getCardTypeColor = (cardType: string, index: number, isBackground: boolean = false) => {
+    const defaultColors = isBackground ? 
+      [chineseColors.backgrounds[1], chineseColors.backgrounds[2]] : 
+      [chineseColors.borders[1], chineseColors.borders[2]];
+    
+    if (cardType.includes('私教')) {
+      return isBackground ? chineseColors.backgrounds[2] : chineseColors.borders[2];
+    } else if (cardType.includes('团课')) {
+      return isBackground ? chineseColors.backgrounds[1] : chineseColors.borders[1];
+    }
+    
+    // 对于其他类型，使用索引选择颜色
+    return defaultColors[index % defaultColors.length];
+  };
+
+  // 教练工作量数据（按月份和教练名字显示）
+  const trainerNames = ['JR', 'Da', 'Ming', 'Big', 'Bas', 'Sumay', 'First'];
+  
+  // 根据选择的时间范围获取月份标签和数据
+  const getTimeRangeData = () => {
+    switch(timeRange) {
+      case 'thisMonth':
+        return {
+          labels: ['本月'],
+          data: [
+            { label: '本月', data: [0, 0, 0, 0, 0, 0, 0] }
+          ]
+        };
+      case 'lastMonth':
+        return {
+          labels: ['上月'],
+          data: [
+            { label: '上月', data: [0, 0, 0, 0, 0, 0, 0] }
+          ]
+        };
+      case 'last3Months':
+        return {
+          labels: ['本月', '上月', '上上月'],
+          data: [
+            { label: '本月', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: '上月', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: '上上月', data: [0, 0, 0, 0, 0, 0, 0] }
+          ]
+        };
+      case 'thisQuarter':
+        return {
+          labels: ['1月', '2月', '3月'],
+          data: [
+            { label: '1月', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: '2月', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: '3月', data: [0, 0, 0, 0, 0, 0, 0] }
+          ]
+        };
+      case 'thisYear':
+        return {
+          labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+          data: [
+            { label: 'Q1', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: 'Q2', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: 'Q3', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: 'Q4', data: [0, 0, 0, 0, 0, 0, 0] }
+          ]
+        };
+      default:
+        return {
+          labels: ['本月'],
+          data: [
+            { label: '本月', data: [0, 0, 0, 0, 0, 0, 0] }
+          ]
+        };
+    }
+  };
+
+  // 获取当前时间范围的数据
+  const timeRangeData = getTimeRangeData();
 
   return (
     <div className="space-y-8">
@@ -184,7 +322,7 @@ export default function Overview({ stats }: Props) {
           )}
         </div>
 
-        {/* 会员卡使用情况 */}
+        {/* 会员卡类型分布 */}
         <div className="bg-white rounded-lg shadow p-6 border-2 border-[#283F3E]">
           <div className="flex items-center mb-4">
             <PieChart className="w-5 h-5 text-[#DD7E3B] mr-2" />
@@ -195,58 +333,148 @@ export default function Overview({ stats }: Props) {
             <LoadingSpinner />
           ) : cardStatsError ? (
             <ErrorMessage message={cardStatsError.message} />
+          ) : cardStats.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">暂无会员卡数据</div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 简化的饼图（团课卡/私教卡） */}
               <div className="h-80">
                 <Pie 
                   data={{
-                    labels: cardStats.map(stat => stat.cardType),
-                    datasets: [
-                      {
-                        data: cardStats.map(stat => stat.count),
-                        backgroundColor: [
-                          chineseColors.backgrounds[0], // 中国红
-                          chineseColors.backgrounds[1], // 洗柿橙
-                          chineseColors.backgrounds[2], // 琉璃蓝
-                          chineseColors.backgrounds[3], // 天水蓝
-                          chineseColors.backgrounds[4], // 钴蓝
-                          chineseColors.backgrounds[5], // 飞泉青
-                          chineseColors.backgrounds[6], // 橙排红
-                          chineseColors.backgrounds[7], // 薄香橙
-                          'rgba(157, 41, 51, 0.8)',    // 血石红
-                          'rgba(200, 116, 86, 0.8)',   // 淡红瓦
-                        ],
-                        borderColor: chineseColors.borders,
-                        borderWidth: 2,
-                      }
-                    ],
+                    labels: simplifiedCardData.map(item => item.type),
+                    datasets: [{
+                      data: simplifiedCardData.map(item => item.value),
+                      backgroundColor: simplifiedCardData.map((item, index) => 
+                        getCardTypeColor(item.type, index, true)
+                      ),
+                      borderColor: simplifiedCardData.map((item, index) => 
+                        getCardTypeColor(item.type, index)
+                      ),
+                      borderWidth: 1
+                    }]
                   }}
                   options={{
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
+                      title: {
+                        display: true,
+                        text: '卡类型总览',
+                        font: {
+                          size: 16
+                        },
+                        color: chineseColors.blues[0]
+                      },
                       legend: {
-                        position: 'right',
+                        position: 'bottom',
                         labels: {
                           font: {
-                            weight: 'bold',
+                            size: 14
                           },
-                          color: '#283F3E', // 铜器青
+                          color: chineseColors.blues[0]
                         }
                       },
-                    },
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            const item = simplifiedCardData[context.dataIndex];
+                            return `${item.type}: ${item.value}张 (${item.percentage})`;
+                          }
+                        }
+                      }
+                    }
                   }}
                 />
+              </div>
+              
+              {/* 详细会员卡类型分布表格 */}
+              <div className="h-80 overflow-auto">
+                <h3 className="text-md font-medium mb-3 text-center">会员卡详细分布</h3>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-2 text-left border-b">卡类型</th>
+                      <th className="p-2 text-center border-b">数量</th>
+                      <th className="p-2 text-center border-b">占比</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cardDistributionData.map((item, index) => (
+                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="p-2 border-b">
+                          <div className="flex items-center">
+                            <div 
+                              className="w-3 h-3 rounded-full mr-2" 
+                              style={{ 
+                                backgroundColor: getCardTypeColor(item.type, index) 
+                              }}
+                            ></div>
+                            {item.type}
+                          </div>
+                        </td>
+                        <td className="p-2 text-center border-b">{item.value}</td>
+                        <td className="p-2 text-center border-b">{item.percentage}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-100 font-semibold">
+                      <td className="p-2 border-b">总计</td>
+                      <td className="p-2 text-center border-b">
+                        {cardDistributionData.reduce((sum, item) => sum + item.value, 0)}
+                      </td>
+                      <td className="p-2 text-center border-b">100%</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </div>
 
-        {/* 教练工作量分析 */}
+        {/* 教练工作量分析 - 按选择的时间范围显示私教课 */}
         <div className="bg-white rounded-lg shadow p-6 border-2 border-[#283F3E]">
-          <div className="flex items-center mb-4">
-            <BarChart className="w-5 h-5 text-[#1A93BC] mr-2" />
-            <h2 className="text-lg font-medium">教练工作量分析 Trainer Workload</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <BarChart className="w-5 h-5 text-[#1A93BC] mr-2" />
+              <h2 className="text-lg font-medium">教练私教课工作量分析 Trainer Private Workload</h2>
+            </div>
+            
+            {/* 时间选择器 */}
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-4 h-4 text-[#1A93BC]" />
+              <div className="text-sm font-medium text-gray-600 mr-2">时间范围:</div>
+              <div className="flex bg-gray-100 rounded-md overflow-hidden">
+                <button 
+                  className={`px-2 py-1 text-xs font-medium ${timeRange === 'thisMonth' ? 'bg-[#1A93BC] text-white' : 'hover:bg-gray-200'}`}
+                  onClick={() => setTimeRange('thisMonth')}
+                >
+                  本月
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs font-medium ${timeRange === 'lastMonth' ? 'bg-[#1A93BC] text-white' : 'hover:bg-gray-200'}`}
+                  onClick={() => setTimeRange('lastMonth')}
+                >
+                  上月
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs font-medium ${timeRange === 'last3Months' ? 'bg-[#1A93BC] text-white' : 'hover:bg-gray-200'}`}
+                  onClick={() => setTimeRange('last3Months')}
+                >
+                  近3月
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs font-medium ${timeRange === 'thisQuarter' ? 'bg-[#1A93BC] text-white' : 'hover:bg-gray-200'}`}
+                  onClick={() => setTimeRange('thisQuarter')}
+                >
+                  本季度
+                </button>
+                <button 
+                  className={`px-2 py-1 text-xs font-medium ${timeRange === 'thisYear' ? 'bg-[#1A93BC] text-white' : 'hover:bg-gray-200'}`}
+                  onClick={() => setTimeRange('thisYear')}
+                >
+                  本年度
+                </button>
+              </div>
+            </div>
           </div>
           
           {trainerStatsLoading ? (
@@ -257,51 +485,56 @@ export default function Overview({ stats }: Props) {
             <div className="h-64">
               <Bar 
                 data={{
-                  labels: trainerStats.map(stat => stat.trainerName),
-                  datasets: [
-                    {
-                      label: '私教课时 Private Sessions',
-                      data: trainerStats.map(stat => stat.sessionCount),
-                      backgroundColor: chineseColors.backgrounds[3], // 天水蓝
-                      borderColor: chineseColors.borders[3], // 天水蓝
-                      borderWidth: 2,
-                    }
-                  ],
+                  labels: trainerNames,
+                  datasets: timeRangeData.data.map((item, index) => ({
+                    label: item.label,
+                    data: item.data,
+                    backgroundColor: chineseColors.backgrounds[index % chineseColors.backgrounds.length],
+                    borderColor: chineseColors.borders[index % chineseColors.borders.length],
+                    borderWidth: 1,
+                  }))
                 }}
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top',
-                      labels: {
-                        font: {
-                          weight: 'bold',
-                        },
-                        color: '#283F3E', // 铜器青
-                      }
-                    },
-                  },
                   scales: {
                     y: {
                       beginAtZero: true,
+                      max: 10,
                       ticks: {
-                        stepSize: 1,
-                        color: '#283F3E', // 铜器青
+                        stepSize: 2,
+                        color: chineseColors.blues[0]
                       },
                       grid: {
-                        color: 'rgba(40, 63, 62, 0.1)', // 铜器青
+                        color: 'rgba(40, 63, 62, 0.1)'
                       }
                     },
                     x: {
                       ticks: {
-                        color: '#283F3E', // 铜器青
+                        color: chineseColors.blues[0]
                       },
                       grid: {
-                        color: 'rgba(40, 63, 62, 0.1)', // 铜器青
+                        color: 'rgba(40, 63, 62, 0.1)'
                       }
                     }
                   },
+                  plugins: {
+                    legend: {
+                      position: 'top',
+                      labels: {
+                        color: chineseColors.blues[0]
+                      }
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          const label = context.dataset.label || '';
+                          const value = context.raw || 0;
+                          return `${label}: ${value}课时`;
+                        }
+                      }
+                    }
+                  }
                 }}
               />
             </div>
