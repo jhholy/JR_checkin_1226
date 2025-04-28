@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Database } from '../../types/database';
-import { formatCardType, formatCardValidity, formatRemainingClasses } from '../../utils/membership/formatters';
+import { formatCardType, formatCardValidity, formatRemainingClasses, formatCardInfo, getCardTypeDisplay, getCardCategoryDisplay, getCardSubtypeDisplay, getTrainerTypeDisplay } from '../../utils/membership/formatters';
 import EditMemberModal from './EditMemberModal';
 import { supabase } from '../../lib/supabase';
-import { formatCardInfo } from './MemberList';
 
 type Member = Database['public']['Tables']['members']['Row'];
 type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
@@ -176,6 +175,7 @@ export default function MemberTable({
                     <ul className="list-disc pl-5">
                       {member.membership_cards.map((card) => (
                         <li key={card.id} className="mb-2">
+                          {/* 使用formatCardInfo函数替代直接调用多个格式化函数 */}
                           {formatCardInfo(card)}
                         </li>
                       ))}

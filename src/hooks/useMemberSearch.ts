@@ -120,6 +120,8 @@ export function useMemberSearch(defaultPageSize: number = 10) {
             id,
             card_type,
             card_category,
+            card_subtype,
+            trainer_type,
             valid_until,
             remaining_group_sessions,
             remaining_private_sessions
@@ -165,7 +167,7 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           // 已过期：有效期早于今天
           query = query
             .not('membership_cards', 'is', null)
-            .lt('membership_cards.valid_until', today);
+            .lte('membership_cards.valid_until', today);
         } else if (expiryStatus === 'upcoming') {
           // 即将到期：有效期在今天到7天后之间
           query = query

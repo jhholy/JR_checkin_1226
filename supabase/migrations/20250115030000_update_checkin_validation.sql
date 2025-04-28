@@ -33,12 +33,12 @@ BEGIN
              OR
              -- 月卡检查每日次数限制
              (mc.card_category = 'monthly' AND (
-                 (mc.card_subtype = 'single' AND NOT EXISTS (
-                     SELECT 1 FROM check_ins ci 
+                 (mc.card_subtype = 'single' AND (
+                     SELECT COUNT(*) FROM check_ins ci 
                      WHERE ci.member_id = v_member_id 
                      AND ci.check_in_date = NEW.check_in_date
                      AND ci.is_extra = false
-                 ))
+                 ) < 1)
                  OR
                  (mc.card_subtype = 'double' AND (
                      SELECT COUNT(*) FROM check_ins ci 

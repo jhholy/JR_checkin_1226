@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import CardForm from './CardForm';
 import { XCircle, CheckCircle } from 'lucide-react';
+import { formatCardInfo } from '../../utils/membership/formatters';
 
 // 卡类型映射
 const getCardTypeDisplay = (type: string | null): string => {
@@ -430,18 +431,7 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
                     ) : (
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {getCardTypeDisplay(card.card_type)} {getCardCategoryDisplay(card.card_category)} {getCardSubtypeDisplay(card.card_subtype)}
-                            {card.trainer_type && ` (${getTrainerTypeDisplay(card.trainer_type)})`}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {card.card_type === '团课' ? 
-                              `剩余团课: ${card.remaining_group_sessions ?? '未设置'}` : 
-                              card.card_type === '私教课' ? 
-                              `剩余私教: ${card.remaining_private_sessions ?? '未设置'}` :
-                              `剩余课时: ${card.remaining_group_sessions ?? card.remaining_private_sessions ?? '未设置'}`}
-                            {card.valid_until && ` | 有效期至: ${new Date(card.valid_until).toLocaleDateString()}`}
-                          </p>
+                          {formatCardInfo(card)}
                         </div>
                         <div className="flex space-x-2">
                           <button
