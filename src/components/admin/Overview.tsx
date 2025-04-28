@@ -157,26 +157,51 @@ export default function Overview({ stats }: Props) {
   
   // 根据选择的时间范围获取月份标签和数据
   const getTimeRangeData = () => {
+    // 将trainerStats数据映射到对应的教练位置
+    const mapTrainerData = () => {
+      // 创建默认全0数组
+      const defaultData = [0, 0, 0, 0, 0, 0, 0];
+      
+      // 如果没有数据或加载中，返回默认数组
+      if (!trainerStats || trainerStats.length === 0 || trainerStatsLoading) {
+        return defaultData;
+      }
+      
+      // 创建一个新数组，保持trainerNames的顺序
+      return trainerNames.map(name => {
+        // 找到匹配的教练数据
+        const trainerData = trainerStats.find(
+          stat => stat.trainerName.toLowerCase() === name.toLowerCase()
+        );
+        
+        // 如果找到数据，返回教练的课时数，否则返回0
+        return trainerData ? trainerData.sessionCount : 0;
+      });
+    };
+    
+    // 获取当前教练数据
+    const currentTrainerData = mapTrainerData();
+    
     switch(timeRange) {
       case 'thisMonth':
         return {
           labels: ['本月'],
           data: [
-            { label: '本月', data: [0, 0, 0, 0, 0, 0, 0] }
+            { label: '本月', data: currentTrainerData }
           ]
         };
       case 'lastMonth':
         return {
           labels: ['上月'],
           data: [
-            { label: '上月', data: [0, 0, 0, 0, 0, 0, 0] }
+            { label: '上月', data: currentTrainerData }
           ]
         };
       case 'last3Months':
         return {
           labels: ['本月', '上月', '上上月'],
           data: [
-            { label: '本月', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: '本月', data: currentTrainerData },
             { label: '上月', data: [0, 0, 0, 0, 0, 0, 0] },
             { label: '上上月', data: [0, 0, 0, 0, 0, 0, 0] }
           ]
@@ -185,7 +210,7 @@ export default function Overview({ stats }: Props) {
         return {
           labels: ['1月', '2月', '3月'],
           data: [
-            { label: '1月', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: '1月', data: currentTrainerData },
             { label: '2月', data: [0, 0, 0, 0, 0, 0, 0] },
             { label: '3月', data: [0, 0, 0, 0, 0, 0, 0] }
           ]
@@ -194,7 +219,7 @@ export default function Overview({ stats }: Props) {
         return {
           labels: ['Q1', 'Q2', 'Q3', 'Q4'],
           data: [
-            { label: 'Q1', data: [0, 0, 0, 0, 0, 0, 0] },
+            { label: 'Q1', data: currentTrainerData },
             { label: 'Q2', data: [0, 0, 0, 0, 0, 0, 0] },
             { label: 'Q3', data: [0, 0, 0, 0, 0, 0, 0] },
             { label: 'Q4', data: [0, 0, 0, 0, 0, 0, 0] }
@@ -204,7 +229,7 @@ export default function Overview({ stats }: Props) {
         return {
           labels: ['本月'],
           data: [
-            { label: '本月', data: [0, 0, 0, 0, 0, 0, 0] }
+            { label: '本月', data: currentTrainerData }
           ]
         };
     }
