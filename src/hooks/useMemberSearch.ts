@@ -165,18 +165,23 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           // 已过期：有效期早于今天
           query = query
             .not('membership_cards', 'is', null)
-            .lte('membership_cards.valid_until', today);
+            .contains('membership_cards', [{
+              valid_until: `lt.${today}`
+            }]);
         } else if (expiryStatus === 'upcoming') {
           // 即将到期：有效期在今天到7天后之间
           query = query
             .not('membership_cards', 'is', null)
-            .gte('membership_cards.valid_until', today)
-            .lte('membership_cards.valid_until', sevenDaysLaterStr);
+            .contains('membership_cards', [{
+              valid_until: `gte.${today},lte.${sevenDaysLaterStr}`
+            }]);
         } else if (expiryStatus === 'active') {
           // 有效：有效期晚于7天后
           query = query
             .not('membership_cards', 'is', null)
-            .gt('membership_cards.valid_until', sevenDaysLaterStr);
+            .contains('membership_cards', [{
+              valid_until: `gt.${sevenDaysLaterStr}`
+            }]);
         }
       }
 
