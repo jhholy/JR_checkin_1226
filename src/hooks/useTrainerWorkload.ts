@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { 
+  startOfMonth, endOfMonth, 
+  subMonths, 
+  startOfQuarter, endOfQuarter,
+  startOfYear, endOfYear 
+} from 'date-fns';
 
 interface TrainerStat {
   trainerId: string;
@@ -10,7 +15,9 @@ interface TrainerStat {
   oneOnTwoCount: number;
 }
 
-export const useTrainerWorkload = () => {
+export type TimeRange = 'thisMonth' | 'lastMonth' | 'last3Months' | 'thisQuarter' | 'thisYear';
+
+export const useTrainerWorkload = (timeRange: TimeRange = 'thisMonth') => {
   const [trainerStats, setTrainerStats] = useState<TrainerStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -20,11 +27,38 @@ export const useTrainerWorkload = () => {
       try {
         setLoading(true);
         
-        // 获取当月的开始和结束日期
+        // 根据选择的时间范围获取开始和结束日期
         const now = new Date();
-        const monthStart = startOfMonth(now);
-        const monthEnd = endOfMonth(now);
+        let startDate: Date;
+        let endDate: Date;
         
+        switch(timeRange) {
+          case 'thisMonth':
+            startDate = startOfMonth(now);
+            endDate = endOfMonth(now);
+            break;
+          case 'lastMonth':
+            const lastMonth = subMonths(now, 1);
+            startDate = startOfMonth(lastMonth);
+            endDate = endOfMonth(lastMonth);
+            break;
+          case 'last3Months':
+            startDate = startOfMonth(subMonths(now, 2));
+            endDate = endOfMonth(now);
+            break;
+          case 'thisQuarter':
+            startDate = startOfQuarter(now);
+            endDate = endOfQuarter(now);
+            break;
+          case 'thisYear':
+            startDate = startOfYear(now);
+            endDate = endOfYear(now);
+            break;
+          default:
+            startDate = startOfMonth(now);
+            endDate = endOfMonth(now);
+        }
+
         // 获取所有教练信息
         const { data: trainers, error: trainersError } = await supabase
           .from('trainers')
@@ -32,13 +66,13 @@ export const useTrainerWorkload = () => {
         
         if (trainersError) throw trainersError;
         
-        // 获取当月的私教签到记录
+        // 获取指定时间范围内的私教签到记录
         const { data: checkIns, error: checkInsError } = await supabase
           .from('check_ins')
           .select('*')
           .eq('is_private', true)
-          .gte('check_in_date', monthStart.toISOString())
-          .lte('check_in_date', monthEnd.toISOString());
+          .gte('check_in_date', startDate.toISOString())
+          .lte('check_in_date', endDate.toISOString());
         
         if (checkInsError) throw checkInsError;
         
@@ -69,7 +103,7 @@ export const useTrainerWorkload = () => {
     };
 
     fetchTrainerWorkload();
-  }, []);
+  }, [timeRange]);
 
   return { trainerStats, loading, error };
 }; 

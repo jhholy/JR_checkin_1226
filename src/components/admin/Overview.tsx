@@ -73,10 +73,12 @@ interface Props {
 export default function Overview({ stats }: Props) {
   const { trends, loading: trendsLoading, error: trendsError } = useCheckInTrends();
   const { cardStats, loading: cardStatsLoading, error: cardStatsError } = useMembershipCardStats();
-  const { trainerStats, loading: trainerStatsLoading, error: trainerStatsError } = useTrainerWorkload();
   
   // 添加时间范围选择状态
   const [timeRange, setTimeRange] = useState<'thisMonth' | 'lastMonth' | 'last3Months' | 'thisQuarter' | 'thisYear'>('thisMonth');
+  
+  // 更新useTrainerWorkload调用，传递timeRange参数
+  const { trainerStats, loading: trainerStatsLoading, error: trainerStatsError } = useTrainerWorkload(timeRange);
 
   // 处理会员卡数据，计算百分比
   const processCardStats = () => {
@@ -171,7 +173,8 @@ export default function Overview({ stats }: Props) {
       return trainerNames.map(name => {
         // 找到匹配的教练数据
         const trainerData = trainerStats.find(
-          stat => stat.trainerName.toLowerCase() === name.toLowerCase()
+          stat => stat.trainerName.toLowerCase().includes(name.toLowerCase()) || 
+                 name.toLowerCase().includes(stat.trainerName.toLowerCase())
         );
         
         // 如果找到数据，返回教练的课时数，否则返回0
@@ -182,6 +185,7 @@ export default function Overview({ stats }: Props) {
     // 获取当前教练数据
     const currentTrainerData = mapTrainerData();
     
+    // 根据不同时间范围返回相应的数据结构
     switch(timeRange) {
       case 'thisMonth':
         return {
@@ -198,31 +202,27 @@ export default function Overview({ stats }: Props) {
           ]
         };
       case 'last3Months':
+        // 对于近3月，我们已经在API中获取了完整的数据，所以使用相同的数据
         return {
-          labels: ['本月', '上月', '上上月'],
+          labels: ['近3月'],
           data: [
-            { label: '本月', data: currentTrainerData },
-            { label: '上月', data: [0, 0, 0, 0, 0, 0, 0] },
-            { label: '上上月', data: [0, 0, 0, 0, 0, 0, 0] }
+            { label: '近3月', data: currentTrainerData }
           ]
         };
       case 'thisQuarter':
+        // 对于本季度，我们已经在API中获取了完整的数据，所以使用相同的数据
         return {
-          labels: ['1月', '2月', '3月'],
+          labels: ['本季度'],
           data: [
-            { label: '1月', data: currentTrainerData },
-            { label: '2月', data: [0, 0, 0, 0, 0, 0, 0] },
-            { label: '3月', data: [0, 0, 0, 0, 0, 0, 0] }
+            { label: '本季度', data: currentTrainerData }
           ]
         };
       case 'thisYear':
+        // 对于本年度，我们已经在API中获取了完整的数据，所以使用相同的数据
         return {
-          labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+          labels: ['本年度'],
           data: [
-            { label: 'Q1', data: currentTrainerData },
-            { label: 'Q2', data: [0, 0, 0, 0, 0, 0, 0] },
-            { label: 'Q3', data: [0, 0, 0, 0, 0, 0, 0] },
-            { label: 'Q4', data: [0, 0, 0, 0, 0, 0, 0] }
+            { label: '本年度', data: currentTrainerData }
           ]
         };
       default:
