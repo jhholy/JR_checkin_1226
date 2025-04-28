@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-interface Member {
-  id: number;
+interface ExpiringMember {
+  id: string;
   name: string;
-  membership_type: string;
-  expiry_date: string;
+  card_id: string;
+  card_type: string;
+  valid_until: string;
+  remaining_sessions?: number;
 }
 
 export const useExpiringMembers = () => {
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<ExpiringMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -18,24 +20,40 @@ export const useExpiringMembers = () => {
       try {
         setLoading(true);
         
-        // 获取30天内到期的会员
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        // 获取7天内到期的会员卡
+        const today = new Date();
+        const sevenDaysFromNow = new Date();
+        sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+        
+        const todayStr = today.toISOString().split('T')[0];
+        const sevenDaysLaterStr = sevenDaysFromNow.toISOString().split('T')[0];
 
-        const { data, error: membersError } = await supabase
-          .from('members')
-          .select('id, name, membership, membership_expiry')
-          .lt('membership_expiry', thirtyDaysFromNow.toISOString())
-          .gt('membership_expiry', new Date().toISOString())
-          .order('membership_expiry');
+        // 从membership_cards表查询
+        const { data, error: cardsError } = await supabase
+          .from('membership_cards')
+          .select(`
+            card_id,
+            member_id,
+            card_type,
+            valid_until,
+            remaining_group_sessions,
+            members!inner(id, name)
+          `)
+          .not('valid_until', 'is', null)
+          .lte('valid_until', sevenDaysLaterStr)
+          .gt('valid_until', todayStr)
+          .order('valid_until');
 
-        if (membersError) throw membersError;
+        if (cardsError) throw cardsError;
 
-        setMembers(data?.map(member => ({
-          id: member.id,
-          name: member.name,
-          membership_type: member.membership,
-          expiry_date: member.membership_expiry,
+        // 转换数据格式
+        setMembers(data?.map(card => ({
+          id: card.member_id,
+          name: card.members.name,
+          card_id: card.card_id,
+          card_type: card.card_type,
+          valid_until: card.valid_until,
+          remaining_sessions: card.remaining_group_sessions,
         })) || []);
 
       } catch (err) {

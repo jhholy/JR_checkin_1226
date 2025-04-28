@@ -98,22 +98,20 @@ export function useMemberSearch(defaultPageSize: number = 10) {
       setLoading(true);
       setError(null);
 
-      const page = params.page || 1;
-      const pageSize = params.pageSize || defaultPageSize;
+      const {
+        searchTerm = '',
+        cardType = '',
+        cardSubtype = '',
+        expiryStatus = '',
+        page = 1,
+        pageSize = defaultPageSize
+      } = params;
+
+      // 计算分页范围
       const start = (page - 1) * pageSize;
       const end = start + pageSize - 1;
 
-      console.log('搜索会员，参数:', params);
-
-      // 清除缓存
-      memberCache.clear();
-
-      // 调试：检查是否正在查找课时不足的会员
-      if (params.expiryStatus === 'low_classes') {
-        console.log('正在查找课时不足的会员，详细的过滤条件将在后续代码中应用');
-      }
-
-      // 构建基础查询
+      // 基础查询
       let query = supabase
         .from('members')
         .select(`
@@ -122,138 +120,90 @@ export function useMemberSearch(defaultPageSize: number = 10) {
             id,
             card_type,
             card_category,
-            card_subtype,
             valid_until,
             remaining_group_sessions,
-            remaining_private_sessions,
-            trainer_type
+            remaining_private_sessions
           )
         `, { count: 'exact' });
 
-      // 处理搜索词
-      if (params.searchTerm) {
-        const searchTerm = params.searchTerm.trim();
-        query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      // 搜索条件
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
       }
 
-      // 处理卡类型和子类型过滤
-      if (params.cardType && params.expiryStatus !== 'low_classes') {
-        // 当筛选"课时不足"时，不应该限制卡类型，以便找到所有可能的会员
-        if (params.cardType === 'no_card') {
-          // 筛选无卡会员
-          query = query.is('membership_cards', null);
-        } else if (params.cardType === 'all_cards') {
-          // 筛选有卡会员，不过滤卡类型
-          query = query.not('membership_cards', 'is', null);
-        } else {
-          // 筛选有特定卡类型的会员
-          query = query.not('membership_cards', 'is', null);
-          
-          // 获取匹配的所有可能卡类型值
-          const dbCardTypeValues = mapCardTypeToDbValues(params.cardType);
-          console.log('使用卡类型过滤:', params.cardType, '映射到数据库值:', dbCardTypeValues);
-          
-          // 使用Supabase的in查询，更简单和稳定
-          query = query.in('membership_cards.card_type', dbCardTypeValues);
-          
-          if (params.cardSubtype) {
-            // 获取匹配的所有可能卡子类型值，考虑卡类型的影响
-            const dbCardSubtypeValues = mapCardSubtypeToDbValues(params.cardSubtype, params.cardType);
-            console.log('使用卡子类型过滤:', params.cardSubtype, '卡类型:', params.cardType, '映射到数据库值:', dbCardSubtypeValues);
-            
-            // 使用Supabase的in查询匹配卡子类型
-            query = query.in('membership_cards.card_subtype', dbCardSubtypeValues);
-          }
+      // 会员卡类型筛选
+      if (cardType) {
+        const cardTypeValues = mapCardTypeToDbValues(cardType);
+        if (cardType === 'no_card') {
+          query = query.not('membership_cards', 'cs', '{}');
+        } else if (cardTypeValues.length > 0) {
+          query = query.contains('membership_cards', [{ card_type: cardTypeValues }]);
         }
-      } else if (params.expiryStatus === 'low_classes') {
-        // 当筛选"课时不足"时，确保至少有会员卡，但不限制卡类型
-        query = query.not('membership_cards', 'is', null);
-        console.log('正在查找所有有卡会员的课时不足情况，不限制卡类型');
       }
 
-      // 首先获取总记录数，而不考虑分页限制
-      let { count: totalRecords } = await query;
-      
-      console.log(`数据库中符合基本条件的总记录数: ${totalRecords}`);
-      
-      let allData;
-      let filteredData;
-      
-      // 如果是特殊筛选条件（如课时不足），先获取所有数据
-      if (params.expiryStatus === 'low_classes') {
-        console.log('课时不足筛选：获取所有符合基本条件的数据');
-        
-        // 获取所有符合基本条件的数据，而不是仅限于当前页
-        const { data: allRecords, error: allFetchError } = await query.order('id', { ascending: false });
-        
-        if (allFetchError) throw allFetchError;
-        
-        allData = allRecords || [];
-        console.log(`获取到的符合基本条件的总记录数: ${allData.length}`);
-        
-        // 在内存中处理到期状态过滤
-        filteredData = filterByExpiryStatus(allData, params.expiryStatus);
-        
-        console.log(`课时不足筛选后的总记录数: ${filteredData.length}`);
-        console.log('课时不足的会员名单:', filteredData.map((m: any) => m.name).join(', '));
-        
-        // 应用分页限制
-        const totalCount = filteredData.length;
-        const totalPages = Math.ceil(totalCount / pageSize);
-        
-        // 截取当前页数据
-        const pageData = filteredData.slice(start, start + pageSize);
-        
-        // 更新结果
-        setResult({
-          members: pageData,
-          totalCount,
-          currentPage: page,
-          totalPages
-        });
-        
-        return {
-          members: pageData,
-          totalCount,
-          currentPage: page,
-          totalPages
-        };
-      } else {
-        // 非特殊筛选，使用常规分页查询
-        const { data, error: fetchError, count } = await query
-          .order('id', { ascending: false })
-          .range(start, end);
-
-        if (fetchError) throw fetchError;
-
-        allData = data || [];
-        
-        // 在内存中处理到期状态过滤
-        if (params.expiryStatus) {
-          filteredData = filterByExpiryStatus(allData, params.expiryStatus);
-        } else {
-          filteredData = allData;
+      // 会员卡子类型筛选
+      if (cardSubtype) {
+        const cardSubtypeValues = mapCardSubtypeToDbValues(cardSubtype, cardType);
+        if (cardSubtypeValues.length > 0) {
+          query = query.contains('membership_cards', [{ card_category: cardSubtypeValues }]);
         }
-        
-        // 计算总页数
-        const totalCount = params.expiryStatus ? filteredData.length : (count || 0);
-        const totalPages = Math.ceil(totalCount / pageSize);
-
-        // 更新结果
-        setResult({
-          members: filteredData,
-          totalCount,
-          currentPage: page,
-          totalPages
-        });
-
-        return {
-          members: filteredData,
-          totalCount,
-          currentPage: page,
-          totalPages
-        };
       }
+
+      // 到期状态筛选
+      if (expiryStatus) {
+        const today = new Date().toISOString().split('T')[0];
+        const sevenDaysLater = new Date();
+        sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+        const sevenDaysLaterStr = sevenDaysLater.toISOString().split('T')[0];
+
+        if (expiryStatus === 'low_classes') {
+          // 课时不足：任何卡的团课剩余次数<=2
+          query = query
+            .not('membership_cards', 'is', null)
+            .lte('membership_cards.remaining_group_sessions', 2);
+        } else if (expiryStatus === 'expired') {
+          // 已过期：有效期早于今天
+          query = query
+            .not('membership_cards', 'is', null)
+            .lte('membership_cards.valid_until', today);
+        } else if (expiryStatus === 'upcoming') {
+          // 即将到期：有效期在今天到7天后之间
+          query = query
+            .not('membership_cards', 'is', null)
+            .gte('membership_cards.valid_until', today)
+            .lte('membership_cards.valid_until', sevenDaysLaterStr);
+        } else if (expiryStatus === 'active') {
+          // 有效：有效期晚于7天后
+          query = query
+            .not('membership_cards', 'is', null)
+            .gt('membership_cards.valid_until', sevenDaysLaterStr);
+        }
+      }
+
+      // 执行查询
+      const { data, error: fetchError, count } = await query
+        .order('id', { ascending: false })
+        .range(start, end);
+
+      if (fetchError) throw fetchError;
+
+      // 更新结果
+      const totalCount = count || 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      setResult({
+        members: data || [],
+        totalCount,
+        currentPage: page,
+        totalPages
+      });
+
+      return {
+        members: data || [],
+        totalCount,
+        currentPage: page,
+        totalPages
+      };
     } catch (err) {
       console.error('搜索会员失败:', err);
       setError('搜索会员失败，请重试');
@@ -416,55 +366,4 @@ export function useMemberSearch(defaultPageSize: number = 10) {
     deleteMember,
     updateMember
   };
-}
-
-// 提取到期状态过滤逻辑为独立函数，方便重用
-const filterByExpiryStatus = (data: any[], expiryStatus: string | undefined) => {
-  if (!expiryStatus) return data;
-  
-  const today = new Date();
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-
-  console.log('应用到期状态过滤:', expiryStatus);
-  
-  const filteredData = data.filter(member => {
-    // 如果没有会员卡,不应该出现在到期筛选中
-    if (!member.membership_cards || member.membership_cards.length === 0) {
-      return false;
-    }
-
-    const hasValidCard = member.membership_cards.some((card: any) => {
-      console.log('检查会员卡:', card.id, '类型:', card.card_type, '类别:', card.card_category, '剩余团课次数:', card.remaining_group_sessions);
-      
-      if (expiryStatus === 'low_classes') {
-        // 大幅简化课时不足筛选逻辑：只要有任何卡的团课剩余次数<=2且是有效值，就符合条件
-        // 不再考虑卡类型、卡类别等复杂条件
-        console.log(`会员卡 ${card.id} - 剩余团课次数: ${card.remaining_group_sessions}, 会员名: ${member.name}`);
-        
-        // 简单直接地判断剩余课时是否不足（<=2且是有效数字）
-        const hasLowSessions = typeof card.remaining_group_sessions === 'number' && card.remaining_group_sessions <= 2;
-        
-        console.log(`卡 ${card.id} 课时不足判断结果: ${hasLowSessions}, 会员名: ${member.name}`);
-        
-        return hasLowSessions;
-      }
-      
-      if (!card.valid_until) return false;
-      const validUntil = new Date(card.valid_until);
-      
-      if (expiryStatus === 'expired') {
-        return validUntil < today;
-      } else if (expiryStatus === 'upcoming') {
-        return validUntil >= today && validUntil <= sevenDaysFromNow;
-      } else if (expiryStatus === 'active') {
-        return validUntil > sevenDaysFromNow;
-      }
-      return false;
-    });
-    
-    return hasValidCard;
-  });
-
-  return filteredData;
 }

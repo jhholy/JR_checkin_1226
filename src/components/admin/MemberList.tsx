@@ -190,7 +190,6 @@ export default function MemberList() {
     e.preventDefault();
     handleSearch(1);
   };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch(1);

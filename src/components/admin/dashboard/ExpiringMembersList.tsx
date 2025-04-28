@@ -3,11 +3,13 @@ import { useExpiringMembers } from '../../../hooks/useExpiringMembers';
 import LoadingSpinner from '../../common/LoadingSpinner';
 import ErrorMessage from '../../common/ErrorMessage';
 
-interface Member {
-  id: number;
+interface ExpiringMember {
+  id: string;
   name: string;
-  membership_type: string;
-  expiry_date: string;
+  card_id: string;
+  card_type: string;
+  valid_until: string;
+  remaining_sessions?: number;
 }
 
 const ExpiringMembersList: React.FC = () => {
@@ -23,15 +25,18 @@ const ExpiringMembersList: React.FC = () => {
         <p className="text-gray-500">暂无即将到期的会员</p>
       ) : (
         <div className="space-y-4">
-          {members.map((member: Member) => (
-            <div key={member.id} className="flex justify-between items-center">
+          {members.map((member: ExpiringMember) => (
+            <div key={member.card_id} className="flex justify-between items-center">
               <div>
                 <p className="font-medium">{member.name}</p>
-                <p className="text-sm text-gray-500">{member.membership_type}</p>
+                <p className="text-sm text-gray-500">{member.card_type}</p>
+                {member.remaining_sessions !== undefined && (
+                  <p className="text-xs text-gray-500">剩余课时: {member.remaining_sessions}</p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-sm text-red-600">
-                  到期日期: {new Date(member.expiry_date).toLocaleDateString()}
+                  到期日期: {new Date(member.valid_until).toLocaleDateString()}
                 </p>
               </div>
             </div>
