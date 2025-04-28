@@ -170,7 +170,7 @@ graph TD
 ### 1. 私教课程规则
 - **课时规则**：
   - 单次课：无时效限制
-  - 10次课：购买日起1个月内有效
+  - 10次课：有效期由管理员自定义
 - **授课方式**：
   - 支持1对1和1对2授课
   - 1对2授课需线下额外收费
@@ -181,7 +181,7 @@ graph TD
 #### 团课课时卡
 - **单次卡**：1次课时，无时效限制
 - **两次卡**：2次课时，无时效限制
-- **10次卡**：10次课时，购买日起3个月内有效，到期未用完课时作废
+- **10次卡**：10次课时，有效期由管理员自定义
 
 #### 团课月卡
 - **单次月卡**：每天最多上1次课，购买日起30天内有效
@@ -219,7 +219,7 @@ graph TD
 - **基本规则**：
   - 身份验证：姓名/微信名+邮箱
   - 提前签到：支持当天任意时间签到
-  - 重复限制：同一时段不可重复签到
+  - 重复限制：同一时段允许重复签到（考虑到共用同一张课时卡的情况），并重复扣除课时数
 - **额外签到规则**：
   - **适用情况**：
     1. 新会员首次签到
@@ -270,11 +270,12 @@ handle_check_in(
   p_member_id UUID,       -- 会员ID
   p_name TEXT,            -- 会员姓名
   p_email TEXT,           -- 会员邮箱
-  p_card_id UUID,         -- 会员卡ID（可为NULL）
   p_class_type TEXT,      -- 课程类型（morning/evening/private）
   p_check_in_date DATE,   -- 签到日期
-  p_trainer_id UUID DEFAULT NULL,  -- 教练ID（私教课必填）
-  p_is_1v2 BOOLEAN DEFAULT FALSE   -- 是否为1对2私教课
+  p_card_id UUID,         -- 会员卡ID（可为NULL）
+  p_trainer_id UUID,      -- 教练ID（私教课必填）
+  p_is_1v2 BOOLEAN,       -- 是否为1对2私教课
+  p_time_slot TEXT        -- 上课时段
 ) RETURNS JSONB
 ```
 
@@ -285,11 +286,12 @@ handle_check_in(
 - `p_member_id`: 会员的唯一标识符
 - `p_name`: 会员姓名，用于显示和识别
 - `p_email`: 会员邮箱，用于身份验证和通知
-- `p_card_id`: 会员卡ID，如果会员没有卡或不使用卡签到，可为NULL
 - `p_class_type`: 课程类型，可选值为'morning'（早课）、'evening'（晚课）或'private'（私教课）
 - `p_check_in_date`: 签到日期，通常为当天日期
+- `p_card_id`: 会员卡ID，如果会员没有卡或不使用卡签到，可为NULL
 - `p_trainer_id`: 教练ID，仅私教课需要指定
 - `p_is_1v2`: 是否为1对2私教课，仅私教课适用
+- `p_time_slot`: 上课时段，例如'9:00-10:30'（早课）、'17:00-18:30'（晚课）或私教具体时段
 
 **返回值**：
 返回一个JSON对象，包含以下字段：
@@ -349,20 +351,6 @@ check_card_validity(
 check_member_exists(p_member_id UUID) RETURNS BOOLEAN
 ```
 
-**功能说明**：
-检查指定ID的会员是否存在。
-
-#### check_duplicate_check_in
-```sql
-check_duplicate_check_in(
-  p_member_id UUID,
-  p_check_in_date DATE,
-  p_class_type TEXT
-) RETURNS BOOLEAN
-```
-
-**功能说明**：
-检查会员在指定日期和课程类型下是否已经签到过，防止重复签到。
 
 #### check_monthly_card_daily_limit
 ```sql
