@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../contexts/MemberAuthContext';
 import { supabase } from '../lib/supabase';
 import { User } from 'lucide-react';
+import { normalizeNameForComparison } from '../utils/member/normalize';
 
 export function MemberLogin() {
   const navigate = useNavigate();
@@ -18,11 +19,14 @@ export function MemberLogin() {
     setError(null);
 
     try {
+      const normalizedName = normalizeNameForComparison(name);
+      const normalizedEmail = email.trim().toLowerCase();
+
       const { data, error } = await supabase
         .from('members')
         .select('*')
-        .eq('name', name)
-        .eq('email', email)
+        .ilike('name', normalizedName)
+        .ilike('email', normalizedEmail)
         .single();
 
       if (error) {

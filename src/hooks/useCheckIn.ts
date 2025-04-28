@@ -69,45 +69,6 @@ export function useCheckIn() {
         };
       }
 
-      // 处理新会员自动创建
-      if (result.is_new && !result.member_id) {
-        logger.info('检测到新会员，准备创建会员记录', { 
-          name: formData.name, 
-          email: formData.email 
-        });
-        
-        // 调用register_new_member创建新会员
-        const { data: newMember, error: createError } = await supabase.rpc(
-          'register_new_member',
-          {
-            p_name: formData.name,
-            p_email: formData.email || null,
-            p_time_slot: formData.timeSlot,
-            p_is_private: formData.courseType === 'private',
-            p_trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
-            p_is_1v2: formData.courseType === 'private' ? !!formData.is1v2 : false
-          }
-        );
-
-        if (createError) {
-          logger.error('创建新会员失败', { error: createError });
-          throw new Error(createError.message || '创建新会员失败。Registration failed.');
-        }
-
-        if (!newMember || !newMember.member_id) {
-          logger.error('创建新会员失败，未返回会员ID', { newMember });
-          throw new Error('创建新会员失败，未返回会员ID。Member ID not returned.');
-        }
-
-        // 使用新创建的会员ID
-        logger.info('新会员创建成功', { 
-          member_id: newMember.member_id,
-          newMember 
-        });
-        result.member_id = newMember.member_id;
-        result.is_new = true;
-      }
-
       // 验证member_id
       if (!result.member_id) {
         throw new Error('无法获取会员ID');
