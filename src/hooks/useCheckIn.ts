@@ -136,7 +136,7 @@ export function useCheckIn() {
           success: true,
           isNewMember: true,
           isExtra: true, // 新会员默认为额外签到
-          message: '新会员注册并签到成功！Welcome! New member registration and check-in successful!',
+          message: '签到成功！Check-in successful!',
           courseType: formData.courseType
         };
       }

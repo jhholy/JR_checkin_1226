@@ -96,7 +96,8 @@ export function useNewMemberCheckIn() {
       return {
         success: true,
         message: '签到成功！Check-in successful!',
-        isNewMember: true
+        isNewMember: true,
+        isExtra: true
       };
     } catch (err) {
       console.error('新会员签到处理错误:', err);

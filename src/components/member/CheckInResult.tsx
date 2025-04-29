@@ -30,13 +30,10 @@ export default function CheckInResult({ status }: Props) {
       }
       return '签到失败 Check-in Failed';
     }
-    if (status.isNewMember) {
-      return '新会员签到成功！New Member Check-in Success!';
-    }
     if (status.isExtra) {
       return status.courseType === 'private' 
-        ? '⚠️ 私教课额外签到提醒 Private Class Extra Check-in Alert'
-        : '⚠️ 额外签到提醒 Extra Check-in Alert';
+        ? '签到成功！Private Class Check-in Success!'
+        : '签到成功！Check-in Success!';
     }
     return status.courseType === 'private'
       ? '私教课签到成功！Private Class Check-in Success!'
@@ -83,17 +80,9 @@ export default function CheckInResult({ status }: Props) {
           {status.isExtra && (
             <div className="text-sm text-gray-500 mb-4">
               {status.courseType === 'private' ? (
-                <>
-                  提示：本次签到未扣除私教课时，请联系管理员购买或续费私教卡。
-                  <br />
-                  Note: No private session was deducted. Please contact admin to purchase or renew your private training card.
-                </>
+                '提示：请联系管理员购买或续费私教卡 / Please contact admin for private card'
               ) : (
-                <>
-                  提示：本次签到未扣除课时，请联系管理员购买或续费会员卡。
-                  <br />
-                  Note: No session was deducted. Please contact admin to purchase or renew your membership card.
-                </>
+                '提示：请联系管理员购买或续费会员卡 / Please contact admin for membership card'
               )}
             </div>
           )}
