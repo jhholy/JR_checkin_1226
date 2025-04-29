@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { CheckIn, ClassType } from '../types/database';
+import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 interface FetchRecordsParams {
   memberName?: string;
@@ -54,69 +55,88 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
     oneOnTwo: 0
   });
 
+  // 创建基础查询构建函数，用于构建一致的查询条件
+  const createBaseQuery = async (params: FetchRecordsParams) => {
+    const { memberName, startDate, endDate, timeSlot, classType, isExtra, is1v2, trainerId, isPrivate } = params;
+    
+    // 创建基础查询
+    let query = supabase
+      .from('check_ins')
+      .select('*');
+    
+    // 如果有会员名称，先找到相应的会员ID
+    let foundMemberIds: string[] = [];
+    if (memberName) {
+      const { data: membersData } = await supabase
+        .from('members')
+        .select('id')
+        .or(`name.ilike.%${memberName}%,email.ilike.%${memberName}%`);
+      
+      if (membersData && membersData.length > 0) {
+        foundMemberIds = membersData.map(m => m.id);
+        query = query.in('member_id', foundMemberIds);
+      } else {
+        // 没有找到匹配的会员，返回空查询
+        return { query, memberIds: [] as string[] };
+      }
+    }
+    
+    // 应用其他筛选条件
+    if (startDate) {
+      query = query.gte('check_in_date', startDate);
+    }
+    if (endDate) {
+      query = query.lte('check_in_date', endDate);
+    }
+    if (timeSlot) {
+      query = query.eq('time_slot', timeSlot);
+    }
+    if (classType) {
+      query = query.eq('class_type', classType);
+    }
+    if (isExtra !== undefined) {
+      query = query.eq('is_extra', isExtra);
+    }
+    if (isPrivate !== undefined) {
+      query = query.eq('is_private', isPrivate);
+    }
+    if (is1v2 !== undefined) {
+      query = query.eq('is_1v2', is1v2);
+    }
+    if (trainerId) {
+      query = query.eq('trainer_id', trainerId);
+    }
+    
+    return { query, memberIds: foundMemberIds };
+  };
+
   const fetchStats = async (params: FetchRecordsParams) => {
     try {
-      // 获取总签到数
-      const getCountWithFilters = async (additionalFilters: any = {}) => {
-        // 创建基础查询
-        const query = supabase
-          .from('check_ins')
-          .select('id', { count: 'exact' });
+      // 获取各类型的签到统计
+      const getCountWithFilter = async (additionalFilters: Partial<FetchRecordsParams> = {}) => {
+        // 合并基础参数和额外筛选条件
+        const mergedParams = { ...params, ...additionalFilters };
+        const { query } = await createBaseQuery(mergedParams);
         
-        // 应用通用筛选条件
-        if (params.startDate) {
-          query.gte('check_in_date', params.startDate);
-        }
-        if (params.endDate) {
-          query.lte('check_in_date', params.endDate);
-        }
-        if (params.timeSlot) {
-          query.eq('time_slot', params.timeSlot);
-        }
-        if (params.trainerId) {
-          query.eq('trainer_id', params.trainerId);
-        }
+        // 计数查询 - 使用更简单的方法来获取数量
+        // 需要先调用select，然后获取结果的长度
+        const { data, error } = await query;
         
-        // 应用额外筛选条件
-        Object.entries(additionalFilters).forEach(([key, value]) => {
-          if (value !== undefined) {
-            query.eq(key, value);
-          }
-        });
-        
-        // 如果有会员名称，我们需要单独处理
-        if (params.memberName) {
-          // 首先获取匹配的会员ID
-          const { data: membersData } = await supabase
-            .from('members')
-            .select('id')
-            .or(`name.ilike.%${params.memberName}%,email.ilike.%${params.memberName}%`);
-          
-          if (membersData && membersData.length > 0) {
-            const memberIds = membersData.map(m => m.id);
-            query.in('member_id', memberIds);
-          } else {
-            // 如果没有匹配的会员，直接返回0
-            return 0;
-          }
-        }
-        
-        const { count, error } = await query;
         if (error) {
           console.error('获取计数错误:', error);
           return 0;
         }
         
-        return count || 0;
+        return data?.length || 0;
       };
       
       // 并行获取各种计数
       const [total, regular, extra, oneOnOne, oneOnTwo] = await Promise.all([
-        getCountWithFilters(),
-        getCountWithFilters({ is_extra: false }),
-        getCountWithFilters({ is_extra: true }),
-        getCountWithFilters({ is_private: true, is_1v2: false }),
-        getCountWithFilters({ is_private: true, is_1v2: true })
+        getCountWithFilter(),
+        getCountWithFilter({ isExtra: false }),
+        getCountWithFilter({ isExtra: true }),
+        getCountWithFilter({ isPrivate: true, is1v2: false }),
+        getCountWithFilter({ isPrivate: true, is1v2: true })
       ]);
       
       return {
@@ -167,49 +187,33 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         isPrivate
       });
       
-      // 简化版的查询 - 不使用高级关系特性
-      const query = supabase
-        .from('check_ins')
-        .select(`
-          id,
-          member_id,
-          time_slot,
-          is_extra,
-          is_private,
-          is_1v2,
-          created_at,
-          check_in_date,
-          trainer_id
-        `, { count: 'exact' });
-
-      // 应用普通过滤条件
-      if (startDate) {
-        query.gte('check_in_date', startDate);
+      // 使用共享的查询构建函数创建基础查询
+      const { query, memberIds } = await createBaseQuery({
+        memberName,
+        startDate,
+        endDate,
+        timeSlot,
+        classType,
+        isExtra,
+        is1v2,
+        trainerId,
+        isPrivate
+      });
+      
+      // 如果没有找到匹配的会员，且提供了会员名称，直接返回空结果
+      if (memberName && memberIds.length === 0) {
+        setRecords([]);
+        setTotalCount(0);
+        setCurrentPage(page);
+        setTotalPages(0);
+        setStats({ total: 0, regular: 0, extra: 0, oneOnOne: 0, oneOnTwo: 0 });
+        setLoading(false);
+        return;
       }
-      if (endDate) {
-        query.lte('check_in_date', endDate);
-      }
-      if (timeSlot) {
-        query.eq('time_slot', timeSlot);
-      }
-      if (classType) {
-        query.eq('class_type', classType);
-      }
-      if (isExtra !== undefined) {
-        query.eq('is_extra', isExtra);
-      }
-      if (isPrivate !== undefined) {
-        query.eq('is_private', isPrivate);
-      }
-      if (is1v2 !== undefined) {
-        query.eq('is_1v2', is1v2);
-      }
-      if (trainerId) {
-        query.eq('trainer_id', trainerId);
-      }
-
-      // 排序和分页
+      
+      // 查询数据并计算总数
       const { data: checkInsData, error: checkInsError, count } = await query
+        .select('id, member_id, time_slot, is_extra, is_private, is_1v2, created_at, check_in_date, trainer_id')
         .order('check_in_date', { ascending: false })
         .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
@@ -227,15 +231,19 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
         setTotalCount(0);
         setCurrentPage(page);
         setTotalPages(0);
+        
+        // 也清空统计数据
+        setStats({ total: 0, regular: 0, extra: 0, oneOnOne: 0, oneOnTwo: 0 });
+        setLoading(false);
         return;
       }
       
       // 获取会员数据
-      const memberIds = checkInsData.map(record => record.member_id).filter(Boolean);
+      const checkInMemberIds = checkInsData.map(record => record.member_id).filter(Boolean);
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('id, name, email')
-        .in('id', memberIds);
+        .in('id', checkInMemberIds);
         
       if (membersError) {
         console.error('获取会员数据错误:', membersError);
@@ -271,32 +279,23 @@ export function useCheckInRecordsPaginated(initialPageSize: number = 10) {
           trainer: trainer ? [{ name: trainer.name }] : []
         };
       });
-      
-      // 如果有会员名称过滤条件，手动过滤结果
-      let filteredRecords = processedRecords;
-      if (memberName) {
-        const lowerMemberName = memberName.toLowerCase();
-        filteredRecords = processedRecords.filter(record => {
-          if (record.members.length === 0) return false;
-          
-          const memberInfo = record.members[0];
-          return (memberInfo.name && memberInfo.name.toLowerCase().includes(lowerMemberName)) || 
-                 (memberInfo.email && memberInfo.email.toLowerCase().includes(lowerMemberName));
-        });
-      }
 
-      setRecords(filteredRecords as CheckInRecord[]);
+      setRecords(processedRecords as CheckInRecord[]);
       setTotalCount(count || 0);
       setCurrentPage(page);
       setTotalPages(Math.ceil((count || 0) / pageSize));
       
-      // 获取并更新统计数据
+      // 获取并更新统计数据，使用相同的参数以确保一致性
       const statsData = await fetchStats({
         memberName,
         startDate,
         endDate,
         timeSlot,
-        trainerId
+        classType,
+        isExtra,
+        is1v2,
+        trainerId,
+        isPrivate
       });
       setStats(statsData);
       

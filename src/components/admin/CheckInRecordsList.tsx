@@ -87,6 +87,8 @@ export default function CheckInRecordsList() {
       : '所有时间';
     
     const totalPrivateClasses = stats.oneOnOne + stats.oneOnTwo;
+    const totalCheckins = stats.regular + stats.extra;
+    const totalGroupClasses = totalCheckins - totalPrivateClasses;
     
     return (
       <div className="bg-white p-6 rounded-lg shadow mb-4">
@@ -95,7 +97,7 @@ export default function CheckInRecordsList() {
           <span>于</span>
           <span className="font-medium text-[#4285F4]">{dateRange}</span>
           <span>共签到</span>
-          <span className="font-bold text-[#4285F4]">{stats.total}</span>
+          <span className="font-bold text-[#4285F4]">{totalCheckins}</span>
           <span>次，其中</span>
           <span className="font-medium text-green-600">{stats.regular}</span>
           <span>次正常签到，</span>
@@ -103,7 +105,7 @@ export default function CheckInRecordsList() {
           <span>次额外签到；</span>
           <span className="font-medium text-purple-600">{totalPrivateClasses}</span>
           <span>次私教课，</span>
-          <span className="font-medium text-blue-600">{stats.total - totalPrivateClasses}</span>
+          <span className="font-medium text-blue-600">{totalGroupClasses}</span>
           <span>次团课。</span>
         </p>
       </div>
