@@ -43,15 +43,13 @@ export default function CheckInResult({ status }: Props) {
   // 根据签到状态生成图标颜色
   const getIconColor = () => {
     if (!status.success) return 'text-yellow-500';
-    if (status.isExtra) return 'text-red-500';
-    return 'text-green-500';
+    return 'text-green-500'; // 所有成功签到都使用绿色
   };
 
   // 根据签到状态生成消息样式
   const getMessageStyle = () => {
     if (!status.success) return 'text-red-600';
-    if (status.isExtra) return 'text-red-600 font-bold';
-    return 'text-gray-600';
+    return 'text-gray-600'; // 所有成功签到都使用相同文本颜色
   };
 
   return (
@@ -70,11 +68,7 @@ export default function CheckInResult({ status }: Props) {
         </>
       ) : status.success ? (
         <>
-          {status.isExtra ? (
-            <AlertCircle className={`w-16 h-16 mx-auto mb-4 ${getIconColor()}`} />
-          ) : (
-            <CheckCircle className={`w-16 h-16 mx-auto mb-4 ${getIconColor()}`} />
-          )}
+          <CheckCircle className={`w-16 h-16 mx-auto mb-4 ${getIconColor()}`} />
           <h2 className="text-xl font-semibold mb-2">{getTitle()}</h2>
           <p className={`mb-6 whitespace-pre-line ${getMessageStyle()}`}>{status.message}</p>
           {status.isExtra && (
