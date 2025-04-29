@@ -268,10 +268,10 @@ export default function CheckInRecordsList() {
                   {records.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {record.members?.name || '未知会员'}
+                        {record.members && record.members[0]?.name ? record.members[0].name : '未知会员'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {record.members?.email || '-'}
+                        {record.members && record.members[0]?.email ? record.members[0].email : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.time_slot || '-'}
@@ -288,7 +288,7 @@ export default function CheckInRecordsList() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {record.trainer?.name || '-'}
+                        {record.trainer && record.trainer[0]?.name ? record.trainer[0].name : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {format(new Date(record.created_at), 'yyyy-MM-dd HH:mm:ss')}

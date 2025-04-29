@@ -69,11 +69,6 @@ export function useCheckIn() {
         };
       }
 
-      // 验证member_id
-      if (!result.member_id) {
-        throw new Error('无法获取会员ID');
-      }
-
       // 验证私教课必填参数
       if (formData.courseType === 'private') {
         if (!formData.trainerId) {
@@ -82,6 +77,68 @@ export function useCheckIn() {
         if (formData.is1v2 === undefined) {
           throw new Error('私教课签到需要指定是否为1v2课程');
         }
+      }
+
+      // 新会员处理 - 如果没有member_id，表示是新会员，需要注册
+      if (!result.member_id) {
+        logger.info('检测到新会员，开始注册流程', {
+          name: formData.name,
+          email: formData.email,
+          courseType: formData.courseType,
+          timeSlot: formData.timeSlot
+        });
+        
+        // 验证时间段
+        if (!formData.timeSlot) {
+          throw new Error('签到时需要选择时间段');
+        }
+        
+        // 验证教练ID格式(如果是私教课)
+        if (formData.courseType === 'private' && formData.trainerId && 
+            !formData.trainerId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          logger.error('无效的trainer_id格式', { trainer_id: formData.trainerId });
+          throw new Error('无效的教练ID格式');
+        }
+        
+        // 构造register_new_member参数
+        const registerParams = {
+          p_name: formData.name,
+          p_email: formData.email || '',  // 确保email不为null
+          p_time_slot: formData.timeSlot,
+          p_is_private: formData.courseType === 'private',
+          p_trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
+          p_is_1v2: formData.courseType === 'private' ? !!formData.is1v2 : false
+        };
+        
+        logger.info('调用register_new_member注册新会员', registerParams);
+        
+        const { data: registerResult, error: registerError } = await supabase.rpc(
+          'register_new_member',
+          registerParams
+        );
+        
+        if (registerError) {
+          logger.error('新会员注册失败', { 
+            error: registerError,
+            params: registerParams
+          });
+          throw new Error(registerError.message || '新会员注册失败');
+        }
+        
+        if (!registerResult || !registerResult.success) {
+          logger.error('新会员注册返回数据无效', { registerResult });
+          throw new Error('新会员注册失败，返回数据无效');
+        }
+        
+        logger.info('新会员注册成功', registerResult);
+        
+        return {
+          success: true,
+          isNewMember: true,
+          isExtra: true, // 新会员默认为额外签到
+          message: '新会员注册并签到成功！Welcome! New member registration and check-in successful!',
+          courseType: formData.courseType
+        };
       }
 
       let validCardId = null;
