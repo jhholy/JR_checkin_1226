@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckInFormData } from '../types/database';
 import { useCheckIn } from '../hooks/useCheckIn';
@@ -26,9 +26,29 @@ export default function PrivateClassCheckIn() {
   const { submitCheckIn, loading, error } = useCheckIn();
   const [checkInStatus, setCheckInStatus] = useState<CheckInStatus | null>(null);
   const [networkError, setNetworkError] = useState(false);
+  
+  // 添加缓存用户信息的功能
+  useEffect(() => {
+    // 从localStorage获取上次使用的用户信息并传给CheckInForm组件
+    const cachedUserInfo = localStorage.getItem('lastCheckinUser');
+    if (cachedUserInfo) {
+      try {
+        const { name, email } = JSON.parse(cachedUserInfo);
+        // 缓存的用户信息会在CheckInForm组件中使用
+      } catch (e) {
+        console.error('Failed to parse cached user info:', e);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (formData: CheckInFormData): Promise<CheckInResultType> => {
     try {
+      // 缓存用户信息到localStorage
+      localStorage.setItem('lastCheckinUser', JSON.stringify({
+        name: formData.name,
+        email: formData.email
+      }));
+      
       const result = await submitCheckIn({
         ...formData,
         courseType: 'private'  // 标记为私教签到
@@ -92,6 +112,7 @@ export default function PrivateClassCheckIn() {
               onSubmit={handleSubmit}
               courseType="private"
               requireEmail={true}
+              useCachedInfo={true} // 启用使用缓存信息
             />
           )
         )}

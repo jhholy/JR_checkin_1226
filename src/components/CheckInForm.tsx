@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckInFormData } from '../types/database';
 import { validateCheckInForm } from '../utils/validation/formValidation';
 import EmailVerification from './member/EmailVerification';
@@ -11,9 +11,10 @@ interface Props {
   courseType: 'group' | 'private';
   isNewMember?: boolean;
   requireEmail?: boolean;
+  useCachedInfo?: boolean;
 }
 
-export default function CheckInForm({ onSubmit, courseType, isNewMember = false, requireEmail = true }: Props) {
+export default function CheckInForm({ onSubmit, courseType, isNewMember = false, requireEmail = true, useCachedInfo = false }: Props) {
   const [formData, setFormData] = useState<CheckInFormData>(() => ({
     name: '',
     email: '',
@@ -25,6 +26,31 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (useCachedInfo) {
+      const cachedUserInfo = localStorage.getItem('lastCheckinUser');
+      if (cachedUserInfo) {
+        try {
+          const { name: cachedName, email: cachedEmail } = JSON.parse(cachedUserInfo);
+          setFormData(prev => ({ ...prev, name: cachedName || '', email: cachedEmail || '' }));
+        } catch (e) {
+          console.error('Failed to parse cached user info:', e);
+        }
+      }
+    }
+  }, [useCachedInfo]);
+
+  function getCurrentTimeSlot(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return '上午 Morning';
+    } else if (hour < 18) {
+      return '下午 Afternoon';
+    } else {
+      return '晚上 Evening';
+    }
+  }
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));

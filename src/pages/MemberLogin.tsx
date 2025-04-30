@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../contexts/MemberAuthContext';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,20 @@ export function MemberLogin() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // 从localStorage加载缓存的登录信息
+  useEffect(() => {
+    const cachedMemberLogin = localStorage.getItem('lastMemberLogin');
+    if (cachedMemberLogin) {
+      try {
+        const { name, email } = JSON.parse(cachedMemberLogin);
+        setName(name);
+        setEmail(email);
+      } catch (e) {
+        console.error('Failed to parse cached member login info:', e);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +35,18 @@ export function MemberLogin() {
     try {
       const normalizedName = normalizeNameForComparison(name);
       const normalizedEmail = email.trim().toLowerCase();
+
+      // 缓存登录信息
+      localStorage.setItem('lastMemberLogin', JSON.stringify({
+        name,
+        email
+      }));
+      
+      // 同时更新签到缓存，方便在签到页面使用
+      localStorage.setItem('lastCheckinUser', JSON.stringify({
+        name,
+        email
+      }));
 
       const { data, error } = await supabase
         .from('members')
