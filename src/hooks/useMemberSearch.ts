@@ -111,7 +111,131 @@ export function useMemberSearch(defaultPageSize: number = 10) {
       const start = (page - 1) * pageSize;
       const end = start + pageSize - 1;
 
-      // 基础查询
+      console.log('搜索条件:', { searchTerm, cardType, cardSubtype, expiryStatus, page, pageSize });
+
+      // 处理"无会员卡"筛选的情况
+      if (cardType === 'no_card') {
+        try {
+          console.log('执行无会员卡筛选查询');
+          // 查找所有会员ID
+          const { data: allMembersData, error: allMembersError } = await supabase
+            .from('members')
+            .select('id');
+          
+          if (allMembersError) throw allMembersError;
+          const allMemberIds = allMembersData.map(m => m.id);
+          console.log(`找到 ${allMemberIds.length} 个会员`);
+          
+          if (allMemberIds.length === 0) {
+            setResult({
+              members: [],
+              totalCount: 0,
+              currentPage: page,
+              totalPages: 1
+            });
+            setLoading(false);
+            return {
+              members: [],
+              totalCount: 0,
+              currentPage: page,
+              totalPages: 1
+            };
+          }
+          
+          // 查找有会员卡的会员ID
+          const { data: membersWithCardsData, error: membersWithCardsError } = await supabase
+            .from('membership_cards')
+            .select('member_id')
+            .order('member_id');
+            
+          if (membersWithCardsError) throw membersWithCardsError;
+          
+          // 转换为Set便于快速查找
+          const membersWithCardsSet = new Set(membersWithCardsData.map(card => card.member_id));
+          console.log(`找到 ${membersWithCardsSet.size} 个有会员卡的会员`);
+          
+          // 找出没有会员卡的会员ID
+          const membersWithoutCardsIds = allMemberIds.filter(id => !membersWithCardsSet.has(id));
+          console.log(`计算得到 ${membersWithoutCardsIds.length} 个没有会员卡的会员`);
+          
+          if (membersWithoutCardsIds.length === 0) {
+            setResult({
+              members: [],
+              totalCount: 0,
+              currentPage: page,
+              totalPages: 1
+            });
+            setLoading(false);
+            return {
+              members: [],
+              totalCount: 0,
+              currentPage: page,
+              totalPages: 1
+            };
+          }
+          
+          // 构建用于无卡会员的查询
+          let noCardQuery = supabase
+            .from('members')
+            .select(`
+              *,
+              membership_cards (
+                id,
+                card_type,
+                card_category,
+                card_subtype,
+                trainer_type,
+                valid_until,
+                remaining_group_sessions,
+                remaining_private_sessions
+              )
+            `, { count: 'exact' })
+            .in('id', membersWithoutCardsIds);
+          
+          // 应用搜索条件
+          if (searchTerm) {
+            noCardQuery = noCardQuery.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
+          }
+          
+          // 执行查询并应用分页
+          const { data, error: fetchError, count } = await noCardQuery
+            .order('id', { ascending: false })
+            .range(start, end);
+          
+          if (fetchError) throw fetchError;
+          
+          // 更新结果
+          const totalCount = count || 0;
+          const totalPages = Math.ceil(totalCount / pageSize);
+          
+          setResult({
+            members: data || [],
+            totalCount,
+            currentPage: page,
+            totalPages
+          });
+          
+          setLoading(false);
+          return {
+            members: data || [],
+            totalCount,
+            currentPage: page,
+            totalPages
+          };
+        } catch (err) {
+          console.error('无会员卡筛选查询失败:', err);
+          setError('搜索无会员卡会员失败，请重试');
+          setLoading(false);
+          return {
+            members: [],
+            totalCount: 0,
+            currentPage: 1,
+            totalPages: 1
+          };
+        }
+      }
+
+      // 基础查询（处理正常情况）
       let query = supabase
         .from('members')
         .select(`
@@ -133,52 +257,117 @@ export function useMemberSearch(defaultPageSize: number = 10) {
         query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
       }
 
-      // 会员卡类型筛选
-      if (cardType) {
+      // 按会员卡类型和子类型筛选的特殊处理
+      if (cardType && cardType !== 'no_card' && cardType !== 'all_cards') {
+        console.log('执行会员卡类型筛选查询:', cardType);
         const cardTypeValues = mapCardTypeToDbValues(cardType);
-        if (cardType === 'no_card') {
-          query = query.not('membership_cards', 'cs', '{}');
-        } else if (cardTypeValues.length > 0) {
-          query = query.contains('membership_cards', [{ card_type: cardTypeValues }]);
+        
+        // 查找符合条件的会员卡的会员ID
+        let cardQuery = supabase.from('membership_cards').select('member_id');
+        
+        // 添加卡类型条件
+        if (cardTypeValues.length > 0) {
+          cardQuery = cardQuery.in('card_type', cardTypeValues);
         }
-      }
-
-      // 会员卡子类型筛选
-      if (cardSubtype) {
-        const cardSubtypeValues = mapCardSubtypeToDbValues(cardSubtype, cardType);
-        if (cardSubtypeValues.length > 0) {
-          query = query.contains('membership_cards', [{ card_category: cardSubtypeValues }]);
+        
+        // 如果还有子类型条件，也添加上
+        if (cardSubtype) {
+          const cardSubtypeValues = mapCardSubtypeToDbValues(cardSubtype, cardType);
+          if (cardSubtypeValues.length > 0) {
+            cardQuery = cardQuery.in('card_subtype', cardSubtypeValues);
+          }
         }
+        
+        const { data: cardData, error: cardError } = await cardQuery;
+        
+        if (cardError) {
+          console.error('查询会员卡失败:', cardError);
+          throw cardError;
+        }
+        
+        // 获取符合条件的会员ID
+        const memberIdsWithMatchingCards = [...new Set(cardData.map(card => card.member_id))];
+        console.log(`找到 ${memberIdsWithMatchingCards.length} 个有匹配会员卡的会员`);
+        
+        if (memberIdsWithMatchingCards.length === 0) {
+          // 如果没有找到符合条件的会员，直接返回空结果
+          setResult({
+            members: [],
+            totalCount: 0,
+            currentPage: page,
+            totalPages: 1
+          });
+          setLoading(false);
+          return {
+            members: [],
+            totalCount: 0,
+            currentPage: page,
+            totalPages: 1
+          };
+        }
+        
+        // 添加会员ID条件到主查询
+        query = query.in('id', memberIdsWithMatchingCards);
       }
 
       // 到期状态筛选
       if (expiryStatus) {
-        const today = new Date().toISOString().split('T')[0];
-        const sevenDaysLater = new Date();
-        sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
-        const sevenDaysLaterStr = sevenDaysLater.toISOString().split('T')[0];
-
-        if (expiryStatus === 'low_classes') {
-          // 课时不足：任何卡的团课剩余次数<=2
-          query = query
-            .not('membership_cards', 'is', null)
-            .lte('membership_cards.remaining_group_sessions', 2);
-        } else if (expiryStatus === 'expired') {
-          // 已过期：有效期早于今天
-          query = query
-            .not('membership_cards', 'is', null)
-            .lte('membership_cards.valid_until', today);
-        } else if (expiryStatus === 'upcoming') {
-          // 即将到期：有效期在今天到7天后之间
-          query = query
-            .not('membership_cards', 'is', null)
-            .gte('membership_cards.valid_until', today)
-            .lte('membership_cards.valid_until', sevenDaysLaterStr);
-        } else if (expiryStatus === 'active') {
-          // 有效：有效期晚于7天后
-          query = query
-            .not('membership_cards', 'is', null)
-            .gt('membership_cards.valid_until', sevenDaysLaterStr);
+        // 这里的逻辑保持不变，因为它处理的是membership_cards的属性，而不是成员的属性
+        // 但我们需要改变查询方式，使用类似上面卡类型筛选的方法
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const sevenDaysLater = new Date();
+          sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+          const sevenDaysLaterStr = sevenDaysLater.toISOString().split('T')[0];
+          
+          let expiryQuery = supabase.from('membership_cards').select('member_id');
+          
+          if (expiryStatus === 'low_classes') {
+            // 课时不足：任何卡的团课剩余次数<=2
+            expiryQuery = expiryQuery.lte('remaining_group_sessions', 2);
+          } else if (expiryStatus === 'expired') {
+            // 已过期：有效期早于今天
+            expiryQuery = expiryQuery.lte('valid_until', today);
+          } else if (expiryStatus === 'upcoming') {
+            // 即将到期：有效期在今天到7天后之间
+            expiryQuery = expiryQuery.gte('valid_until', today).lte('valid_until', sevenDaysLaterStr);
+          } else if (expiryStatus === 'active') {
+            // 有效：有效期晚于7天后
+            expiryQuery = expiryQuery.gt('valid_until', sevenDaysLaterStr);
+          }
+          
+          const { data: expiryData, error: expiryError } = await expiryQuery;
+          
+          if (expiryError) {
+            console.error('查询到期状态失败:', expiryError);
+            throw expiryError;
+          }
+          
+          // 获取符合条件的会员ID
+          const memberIdsWithMatchingExpiry = [...new Set(expiryData.map(card => card.member_id))];
+          console.log(`找到 ${memberIdsWithMatchingExpiry.length} 个符合到期条件的会员`);
+          
+          if (memberIdsWithMatchingExpiry.length === 0) {
+            // 如果没有找到符合条件的会员，直接返回空结果
+            setResult({
+              members: [],
+              totalCount: 0,
+              currentPage: page,
+              totalPages: 1
+            });
+            setLoading(false);
+            return {
+              members: [],
+              totalCount: 0,
+              currentPage: page,
+              totalPages: 1
+            };
+          }
+          
+          // 添加会员ID条件到主查询
+          query = query.in('id', memberIdsWithMatchingExpiry);
+        } catch (err) {
+          console.error('到期状态筛选查询失败:', err);
         }
       }
 
