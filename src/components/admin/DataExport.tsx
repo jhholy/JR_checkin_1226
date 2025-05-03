@@ -21,11 +21,12 @@ type CheckInRecord = {
   [key: string]: string;
   会员姓名: string;
   会员邮箱: string;
-  课程类型: string;
+  上课时段: string;
   课程性质: string;
-  签到类型: string;
   教练: string;
+  课程类型: string;
   签到时间: string;
+  签到类型: string;
 };
 
 export default function DataExport() {
@@ -148,17 +149,21 @@ export default function DataExport() {
       setError(null);
 
       // 获取所有签到记录
+      // 修正查询语法，改用连接的方式获取会员和教练信息
       const { data: checkIns, error: checkInsError } = await supabase
         .from('check_ins')
         .select(`
-          *,
-          members (
-            name,
-            email
-          ),
-          trainer:trainers (
-            name
-          )
+          id,
+          member_id,
+          card_id,
+          trainer_id,
+          class_type,
+          time_slot,
+          check_in_date,
+          is_extra,
+          is_private,
+          is_1v2,
+          created_at
         `)
         .order('created_at', { ascending: false });
 
@@ -170,19 +175,54 @@ export default function DataExport() {
         return;
       }
 
+      // 获取所有会员数据，用于后续关联
+      const { data: members, error: membersError } = await supabase
+        .from('members')
+        .select('id, name, email');
+      
+      if (membersError) throw membersError;
+      
+      // 创建会员ID到会员信息的映射
+      const memberMap = new Map();
+      members?.forEach(member => {
+        memberMap.set(member.id, { name: member.name, email: member.email || '' });
+      });
+
+      // 获取所有教练数据，用于后续关联
+      const { data: trainers, error: trainersError } = await supabase
+        .from('trainers')
+        .select('id, name, type');
+      
+      if (trainersError) throw trainersError;
+      
+      // 创建教练ID到教练信息的映射
+      const trainerMap = new Map();
+      trainers?.forEach(trainer => {
+        trainerMap.set(trainer.id, { name: trainer.name, type: trainer.type });
+      });
+
       // 转换为CSV格式
-      const records: CheckInRecord[] = checkIns.map((record: CheckIn & { 
-        members: Member;
-        trainer: { name: string } | null;
-      }) => ({
-        '会员姓名': record.members?.name || '',
-        '会员邮箱': record.members?.email || '',
-        '课程类型': record.class_type === 'morning' ? '早课' : '晚课',
-        '课程性质': record.is_private ? '私教课' : '团课',
-        '签到类型': record.is_extra ? '额外签到' : '正常签到',
-        '教练': record.trainer?.name || '',
-        '签到时间': formatDateTimeSafe(record.created_at)
-      }));
+      const records: CheckInRecord[] = checkIns.map((record: any) => {
+        const memberInfo = memberMap.get(record.member_id) || { name: '', email: '' };
+        const trainerInfo = record.trainer_id ? trainerMap.get(record.trainer_id) : null;
+        
+        // 获取课程类型文本
+        let courseTypeText = '-';
+        if (record.is_private) {
+          courseTypeText = record.is_1v2 ? '1对2' : '1对1';
+        }
+
+        return {
+          '会员姓名': memberInfo.name,
+          '会员邮箱': memberInfo.email,
+          '上课时段': record.time_slot || (record.class_type === 'morning' ? '早课 9:00-10:30' : '晚课 17:00-18:30'),
+          '课程性质': record.is_private ? '私教课' : '团课',
+          '教练': trainerInfo?.name || '-',
+          '课程类型': courseTypeText,
+          '签到时间': formatDateTimeSafe(record.created_at),
+          '签到类型': record.is_extra ? '额外签到' : '正常签到'
+        };
+      });
 
       // 生成CSV文件
       const headers = Object.keys(records[0]);

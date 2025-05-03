@@ -250,13 +250,16 @@ export default function CheckInRecordsList() {
                       邮箱
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      上课时段 Time Slot
+                      上课时段 TIME SLOT
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       课程性质
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       教练
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      课程类型
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       签到时间
@@ -291,6 +294,17 @@ export default function CheckInRecordsList() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.trainer && record.trainer[0]?.name ? record.trainer[0].name : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {record.is_private ? (
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            record.is_1v2
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-indigo-100 text-indigo-800'
+                          }`}>
+                            {record.is_1v2 ? '1对2' : '1对1'}
+                          </span>
+                        ) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {format(new Date(record.created_at), 'yyyy-MM-dd HH:mm:ss')}
