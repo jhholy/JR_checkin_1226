@@ -77,6 +77,11 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
   // 显示成功消息的函数
   const showSuccessMessage = (message: string) => {
     setSuccessMessage(message);
+    
+    // 确保立即隐藏表单
+    setIsAddingCard(false);
+    setEditingCardId(null);
+    
     // 3秒后自动清除成功消息
     setTimeout(() => {
       setSuccessMessage('');
@@ -149,6 +154,11 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
       // 标准化卡类型
       let standardizedCard = { ...card };
       
+      // 移除可能导致问题的updated_at字段 
+      if ('updated_at' in standardizedCard) {
+        delete (standardizedCard as any).updated_at;
+      }
+      
       // 根据readme.md中的定义标准化卡类型
       if (card.card_type === '团课' || card.card_type?.toLowerCase() === 'class' || card.card_type?.toLowerCase() === 'group') {
         standardizedCard.card_type = '团课';
@@ -186,6 +196,10 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
 
       if (editingCardId) {
         // 更新现有卡
+        console.log('准备更新会员卡，卡ID:', editingCardId);
+        console.log('更新会员卡的完整数据:', standardizedCard);
+        console.log('卡的有效期:', standardizedCard.valid_until);
+        
         const { error } = await supabase
           .from('membership_cards')
           .update(standardizedCard)
@@ -201,12 +215,30 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
         showSuccessMessage('更新会员卡成功');
       } else {
         // 添加新卡
+        console.log('准备添加新会员卡');
+        const cardToInsert = {
+          ...standardizedCard,
+          member_id: member.id
+        };
+        
+        // 移除可能导致问题的updated_at字段 
+        if ('updated_at' in cardToInsert) {
+          delete (cardToInsert as any).updated_at;
+        }
+        
+        // 保存有效期值用于后续更新（如果需要）
+        const hasValidUntil = !!cardToInsert.valid_until;
+        const expectedValidUntil = cardToInsert.valid_until;
+        
+        // 使用简化的日期格式（仅日期部分）
+        if (cardToInsert.valid_until) {
+          const dateOnly = cardToInsert.valid_until.split('T')[0];
+          cardToInsert.valid_until = dateOnly;
+        }
+        
         const { data, error } = await supabase
           .from('membership_cards')
-          .insert({
-            ...standardizedCard,
-            member_id: member.id
-          })
+          .insert(cardToInsert)
           .select();
 
         if (error) {
@@ -215,29 +247,66 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
           }
           throw error;
         }
+        
         console.log('添加新会员卡成功:', data);
         showSuccessMessage('添加新会员卡成功');
+        
+        // 第二步：如果设置了有效期，执行更新操作以确保valid_until字段被正确保存
+        // （解决Supabase API在INSERT时忽略valid_until的问题）
+        if (hasValidUntil && data && data.length > 0) {
+          const cardId = data[0].id;
+          console.log('新卡ID:', cardId, '- 正在更新有效期...');
+          
+          const { error: updateError } = await supabase
+            .from('membership_cards')
+            .update({ valid_until: expectedValidUntil }) // 只更新valid_until字段，避免其他字段问题
+            .eq('id', cardId);
+            
+          if (updateError) {
+            console.error('更新有效期失败:', updateError);
+          } else {
+            console.log('有效期更新成功');
+          }
+        }
+
+        // 重新获取会员卡列表，一次性获取所有需要的字段
+        const { data: updatedCards, error: fetchError } = await supabase
+          .from('membership_cards')
+          .select(`
+            id,
+            card_type,
+            card_category,
+            card_subtype,
+            trainer_type,
+            remaining_group_sessions,
+            remaining_private_sessions,
+            valid_until,
+            created_at,
+            member_id
+          `)
+          .eq('member_id', member.id);
+
+        if (fetchError) throw fetchError;
+        
+        // 更新本地cards状态，确保页面显示更新的内容
+        setCards((updatedCards || []).map(card => ({
+          ...card,
+          updated_at: null // 添加缺失的字段以满足类型要求
+        })) as MembershipCard[]);
+        
+        // 更新member对象中的membership_cards，确保数据一致性
+        member.membership_cards = (updatedCards || []).map(card => ({
+          ...card,
+          updated_at: null
+        })) as MembershipCard[];
+        
+        // 重要：立即隐藏编辑表单和添加表单
+        setIsAddingCard(false);
+        setEditingCardId(null);
+        
+        // 确保刷新会员列表
+        refreshMemberList();
       }
-
-      // 重新获取会员卡列表
-      const { data, error } = await supabase
-        .from('membership_cards')
-        .select('*')
-        .eq('member_id', member.id);
-
-      if (error) throw error;
-      console.log('重新获取会员卡列表成功:', data);
-
-      // 更新本地cards状态，确保页面立即显示更新的内容
-      setCards(data || []);
-      // 同时更新member对象中的membership_cards，确保数据一致性
-      member.membership_cards = data || [];
-      
-      setIsAddingCard(false);
-      setEditingCardId(null);
-      
-      // 确保刷新会员列表
-      refreshMemberList();
     } catch (error) {
       console.error('保存会员卡失败:', error);
       setError(error instanceof Error ? error.message : '保存会员卡失败，请重试');

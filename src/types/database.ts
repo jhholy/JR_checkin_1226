@@ -82,7 +82,6 @@ export type Database = {
           remaining_private_sessions: number | null;
           valid_until: string | null;
           created_at: string;
-          updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -95,7 +94,6 @@ export type Database = {
           remaining_private_sessions?: number | null;
           valid_until?: string | null;
           created_at?: string;
-          updated_at?: string | null;
         };
         Update: {
           id?: string;
@@ -108,7 +106,6 @@ export type Database = {
           remaining_private_sessions?: number | null;
           valid_until?: string | null;
           created_at?: string;
-          updated_at?: string | null;
         };
         Relationships: [
           {

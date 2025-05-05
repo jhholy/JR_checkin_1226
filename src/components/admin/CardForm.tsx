@@ -1,5 +1,5 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 
 type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
@@ -87,6 +87,7 @@ export default function CardForm({ memberId, card, onSave, onCancel }: CardFormP
         [name]: value === '' ? null : parseInt(value, 10)
       });
     } else if (name === 'valid_until') {
+      // 直接存储日期字符串，不进行转换，在提交时再处理
       setFormData({
         ...formData,
         [name]: value || null
@@ -183,8 +184,30 @@ export default function CardForm({ memberId, card, onSave, onCancel }: CardFormP
         return;
       }
 
+      // 创建要提交的卡数据副本
+      let finalFormData = { ...formData };
+      
+      // 特别处理有效期字段
+      if (finalFormData.valid_until) {
+        // 确保日期格式正确，转换为ISO字符串
+        const dateObj = new Date(finalFormData.valid_until);
+        if (!isNaN(dateObj.getTime())) {
+          // 将日期设置为当天的23:59:59，确保整天有效
+          dateObj.setHours(23, 59, 59, 999);
+          finalFormData.valid_until = dateObj.toISOString();
+        } else {
+          console.error('无效的日期格式:', finalFormData.valid_until);
+          setErrors({ submit: '无效的日期格式，请确保日期格式正确' });
+          setLoading(false);
+          return;
+        }
+      } else {
+        // 确保null而不是undefined或空字符串
+        finalFormData.valid_until = null;
+      }
+      
       // 标准化卡类型
-      let standardizedCard = { ...formData };
+      let standardizedCard = { ...finalFormData };
       
       // 根据readme.md中的定义标准化卡类型
       if (formData.card_type === '团课' || formData.card_type?.toLowerCase() === 'class' || formData.card_type?.toLowerCase() === 'group') {
@@ -218,8 +241,6 @@ export default function CardForm({ memberId, card, onSave, onCancel }: CardFormP
           standardizedCard.card_subtype = '10次卡';
         }
       }
-      
-      console.log('保存标准化后的会员卡:', standardizedCard);
       
       // 调用父组件的保存函数
       await onSave(standardizedCard as MembershipCard);
