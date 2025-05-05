@@ -129,7 +129,8 @@ export default function DataExport() {
       ].join('\n');
 
       // 下载文件
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const BOM = "\uFEFF"; // 添加BOM标记解决Windows Excel打开中文乱码问题
+      const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `members_${format(new Date(), 'yyyyMMdd')}.csv`;
@@ -232,7 +233,8 @@ export default function DataExport() {
       ].join('\n');
 
       // 下载文件
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const BOM = "\uFEFF"; // 添加BOM标记解决Windows Excel打开中文乱码问题
+      const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `check_ins_${format(new Date(), 'yyyyMMdd')}.csv`;
