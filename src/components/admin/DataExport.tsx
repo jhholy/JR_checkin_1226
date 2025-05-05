@@ -34,24 +34,106 @@ export default function DataExport() {
   const [error, setError] = useState<string | null>(null);
 
   const getCardTypeText = (card: MembershipCard) => {
-    switch (card.card_subtype) {
-      case 'single_class':
-        return '团课单次卡 Single Class';
-      case 'two_classes':
-        return '团课两次卡 Two Classes';
-      case 'ten_classes':
-        return '团课十次卡 Ten Classes';
-      case 'single_monthly':
-        return '团课单次月卡 Single Monthly';
-      case 'double_monthly':
-        return '团课双次月卡 Double Monthly';
-      case 'single_private':
-        return '单次私教卡 Single Private';
-      case 'ten_private':
-        return '十次私教卡 Ten Private';
-      default:
-        return card.card_subtype;
+    // 标准化卡类型
+    const cardType = standardizeCardType(card.card_type ?? null);
+    const cardCategory = standardizeCardCategory(card.card_category ?? null);
+    const cardSubtype = standardizeCardSubtype(card.card_subtype ?? null);
+    
+    // 团课处理
+    if (cardType === '团课') {
+      if (cardCategory === '月卡') {
+        if (cardSubtype === '单次月卡') {
+          return '团课单次月卡 Single Monthly';
+        } else if (cardSubtype === '双次月卡') {
+          return '团课双次月卡 Double Monthly';
+        }
+      } else { // 课时卡或其他类别
+        if (cardSubtype === '单次卡') {
+          return '团课单次卡 Single Class';
+        } else if (cardSubtype === '两次卡') {
+          return '团课两次卡 Two Classes';
+        } else if (cardSubtype === '10次卡') {
+          return '团课10次卡 Ten Classes';
+        }
+      }
+    } 
+    // 私教课处理
+    else if (cardType === '私教课') {
+      if (cardSubtype === '单次卡') {
+        return '私教单次卡 Single Private';
+      } else if (cardSubtype === '10次卡') {
+        const trainerType = card.trainer_type;
+        if (trainerType) {
+          return `私教10次卡 Ten Private (${trainerType === 'jr' ? 'JR教练' : '高级教练'})`;
+        }
+        return '私教10次卡 Ten Private';
+      }
     }
+    
+    // 如果没有匹配上面的规则，返回完整名称
+    let name = '';
+    if (cardType) {
+      name = cardType;
+      if (cardSubtype) {
+        name += ` ${cardSubtype}`;
+      }
+      if (cardType === '私教课' && card.trainer_type) {
+        name += ` (${card.trainer_type === 'jr' ? 'JR教练' : '高级教练'})`;
+      }
+    }
+    
+    return name || '未知卡类型';
+  };
+  
+  // 标准化卡类型函数
+  function standardizeCardType(cardType: string | null): string {
+    if (!cardType) return '';
+    
+    const lowerType = cardType.toLowerCase();
+    
+    if (lowerType === 'class' || lowerType === 'group' || lowerType.includes('团课')) {
+      return '团课';
+    } else if (lowerType === 'private' || lowerType.includes('私教')) {
+      return '私教课';
+    }
+    
+    return cardType;
+  }
+  
+  // 标准化卡类别函数
+  function standardizeCardCategory(cardCategory: string | null): string {
+    if (!cardCategory) return '';
+    
+    const lowerCategory = cardCategory.toLowerCase();
+    
+    if (lowerCategory === 'session' || lowerCategory === 'sessions' || lowerCategory.includes('课时')) {
+      return '课时卡';
+    } else if (lowerCategory === 'monthly' || lowerCategory.includes('月')) {
+      return '月卡';
+    }
+    
+    return cardCategory;
+  }
+  
+  // 标准化卡子类型函数
+  function standardizeCardSubtype(cardSubtype: string | null): string {
+    if (!cardSubtype) return '';
+    
+    const lowerSubtype = cardSubtype.toLowerCase();
+    
+    if (lowerSubtype.includes('single') && !lowerSubtype.includes('monthly')) {
+      return '单次卡';
+    } else if ((lowerSubtype.includes('two') || lowerSubtype.includes('double')) && !lowerSubtype.includes('monthly')) {
+      return '两次卡';
+    } else if (lowerSubtype.includes('ten') || lowerSubtype.includes('10')) {
+      return '10次卡';
+    } else if (lowerSubtype.includes('single') && lowerSubtype.includes('monthly')) {
+      return '单次月卡';
+    } else if (lowerSubtype.includes('double') && lowerSubtype.includes('monthly')) {
+      return '双次月卡';
+    }
+    
+    return cardSubtype;
   }
 
   const formatDateSafe = (date: string | null): string => {
@@ -106,11 +188,31 @@ export default function DataExport() {
         '邮箱': member.email || '',
         '会员卡类型': member.membership_cards.map(card => getCardTypeText(card)).join(', '),
         '剩余团课课时': member.membership_cards
-          .filter(card => card.card_category === 'group')
-          .map(card => card.remaining_group_sessions?.toString() || '0')
+          .filter(card => {
+            // 使用标准化函数判断团课卡
+            const cardType = standardizeCardType(card.card_type ?? null);
+            return cardType === '团课';
+          })
+          .map(card => {
+            // 判断是否为月卡，如果是返回空字符串
+            const cardCategory = standardizeCardCategory(card.card_category ?? null);
+            const cardSubtype = standardizeCardSubtype(card.card_subtype ?? null);
+            
+            // 如果是月卡类型，显示为空
+            if (cardCategory === '月卡' || cardSubtype?.includes('月卡')) {
+              return '';
+            }
+            
+            // 非月卡正常显示剩余课时
+            return card.remaining_group_sessions?.toString() || '0';
+          })
           .join(', '),
         '剩余私教课时': member.membership_cards
-          .filter(card => card.card_category === 'private')
+          .filter(card => {
+            // 使用标准化函数判断私教卡
+            const cardType = standardizeCardType(card.card_type ?? null);
+            return cardType === '私教课';
+          })
           .map(card => card.remaining_private_sessions?.toString() || '0')
           .join(', '),
         '会员卡到期日': member.membership_cards
@@ -135,6 +237,9 @@ export default function DataExport() {
       link.href = URL.createObjectURL(blob);
       link.download = `members_${format(new Date(), 'yyyyMMdd')}.csv`;
       link.click();
+
+      // 显示提示信息
+      setError('导出成功! 如果在Windows Excel中打开时显示乱码，请使用"数据">"从文本/CSV"功能导入，并选择UTF-8编码。');
 
     } catch (err) {
       console.error('Failed to export members:', err);
@@ -239,6 +344,9 @@ export default function DataExport() {
       link.href = URL.createObjectURL(blob);
       link.download = `check_ins_${format(new Date(), 'yyyyMMdd')}.csv`;
       link.click();
+
+      // 显示提示信息
+      setError('导出成功! 如果在Windows Excel中打开时显示乱码，请使用"数据">"从文本/CSV"功能导入，并选择UTF-8编码。');
 
     } catch (err) {
       console.error('Failed to export check-ins:', err);
