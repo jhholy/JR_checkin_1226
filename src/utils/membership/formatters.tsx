@@ -175,7 +175,10 @@ function standardizeCardType(cardType: string | null): string {
   
   const lowerType = cardType.toLowerCase();
   
-  if (lowerType === 'class' || lowerType === 'group' || lowerType.includes('团课')) {
+  // 先检查是否为儿童团课
+  if (lowerType.includes('kids') || lowerType.includes('儿童')) {
+    return '儿童团课';
+  } else if (lowerType === 'class' || lowerType === 'group' || lowerType.includes('团课')) {
     return '团课';
   } else if (lowerType === 'private' || lowerType.includes('私教')) {
     return '私教课';
@@ -227,6 +230,7 @@ function standardizeCardSubtype(cardSubtype: string | null): string {
 // 卡类型映射
 export function getCardTypeDisplay(type: string | null): string {
   if (!type) return '未知';
+  if (type === 'kids_group' || type.toLowerCase().includes('kids') || type.includes('儿童')) return '儿童团课';
   if (type === 'class' || type === 'group') return '团课';
   if (type === 'private' || type === '私教') return '私教课';
   return type;
@@ -269,8 +273,9 @@ export function formatCardInfo(card: any, asString = false): string | React.Reac
   // 添加调试日志
   console.log('Card data:', card);
   
-  // 获取基本卡信息
-  const type = getCardTypeDisplay(card.card_type ?? null);
+  // 获取标准化的卡类型，确保一致性
+  const cardType = standardizeCardType(card.card_type ?? null);
+  const type = cardType; // 直接使用标准化的卡类型
   const category = getCardCategoryDisplay(card.card_category ?? null);
   
   // 尝试获取或推断子类型
@@ -322,20 +327,25 @@ export function formatCardInfo(card: any, asString = false): string | React.Reac
   
   // 更好地处理不同类型卡的剩余次数显示
   let remain = '';
-  const isGroupCard = card.card_type === '团课' || card.card_type?.toLowerCase() === 'class' || card.card_type?.toLowerCase() === 'group';
-  const isPrivateCard = card.card_type === '私教课' || card.card_type?.toLowerCase() === 'private';
+  
+  // 关键修改：使用标准化后的cardType并调整判断顺序
+  const isKidsCard = cardType === '儿童团课';
+  const isGroupCard = cardType === '团课';
+  const isPrivateCard = cardType === '私教课';
   const isMonthlyCard = card.card_category === '月卡' || card.card_category?.toLowerCase() === 'monthly';
   
   if (isMonthlyCard) {
     // 月卡显示单次/双次而不是剩余课时
     const monthlyType = subtype.includes('双次') ? '双次' : '单次';
     remain = `剩余团课: ${monthlyType}`;
+  } else if (isKidsCard) { // 关键：将儿童团课检查移到前面
+    remain = `剩余儿童团课: ${card.remaining_kids_sessions ?? '未设置'}`;
   } else if (isGroupCard) {
     remain = `剩余团课: ${card.remaining_group_sessions ?? '未设置'}`;
   } else if (isPrivateCard) {
     remain = `剩余私教: ${card.remaining_private_sessions ?? '未设置'}`;
   } else {
-    remain = `剩余课时: ${card.remaining_group_sessions ?? card.remaining_private_sessions ?? '未设置'}`;
+    remain = `剩余课时: ${card.remaining_group_sessions ?? card.remaining_private_sessions ?? card.remaining_kids_sessions ?? '未设置'}`;
   }
   
   const valid = card.valid_until ? `有效期至: ${new Date(card.valid_until).toLocaleDateString('zh-CN')}` : '无有效期限制';

@@ -17,7 +17,7 @@ interface ExtendedCheckIn {
   member_id: string;
   card_id: string | null;
   trainer_id: string | null;
-  class_type: 'morning' | 'evening';
+  class_type: 'morning' | 'evening' | 'kids_group';
   check_in_time: string;
   check_in_date: string;
   is_extra: boolean;
@@ -111,17 +111,27 @@ export default function CheckInRecords({ memberId, limit = 30 }: Props) {
                     : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {record.time_slot || (record.class_type === 'morning' ? '早课 9:00-10:30' : '晚课 17:00-18:30')}
+                  {record.time_slot || (
+                    record.class_type === 'morning' ? '早课 9:00-10:30' : 
+                    record.class_type === 'kids_group' ? '儿童团课 10:30-12:00' :
+                    '晚课 17:00-18:30'
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <span
                     className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       record.is_private
                         ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
+                        : record.class_type === 'kids_group'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
                     }`}
                   >
-                    {record.is_private ? '私教课 Private' : '团课 Group'}
+                    {record.is_private 
+                      ? '私教课 Private' 
+                      : record.class_type === 'kids_group'
+                        ? '儿童团课 Kids' 
+                        : '团课 Group'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">

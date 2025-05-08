@@ -80,6 +80,7 @@ export type Database = {
           trainer_type: string | null;
           remaining_group_sessions: number | null;
           remaining_private_sessions: number | null;
+          remaining_kids_sessions: number | null;
           valid_until: string | null;
           created_at: string;
         };
@@ -92,6 +93,7 @@ export type Database = {
           trainer_type?: string | null;
           remaining_group_sessions?: number | null;
           remaining_private_sessions?: number | null;
+          remaining_kids_sessions?: number | null;
           valid_until?: string | null;
           created_at?: string;
         };
@@ -104,6 +106,7 @@ export type Database = {
           trainer_type?: string | null;
           remaining_group_sessions?: number | null;
           remaining_private_sessions?: number | null;
+          remaining_kids_sessions?: number | null;
           valid_until?: string | null;
           created_at?: string;
         };
@@ -280,10 +283,11 @@ export type Database = {
         | "two_classes" 
         | "ten_classes" 
         | "single_monthly" 
-        | "double_monthly";
+        | "double_monthly"
+        | "kids_ten_classes";
       
       ClassType: "morning" | "evening";
-      CardType: "class" | "monthly" | "private";
+        CardType: "group" | "private" | "kids_group" | "团课" | "私教课" | "儿童团课" | "all_cards";
       CardCategory: "group" | "private";
       CardSubtype: 
         | "single_class" 
@@ -431,14 +435,16 @@ export type MembershipType = Database['public']['Enums']['membership_type'];
 export interface MembershipCard {
   id: string;
   member_id: string;
-  card_type: string;
-  card_category?: string;
-  card_subtype: string;
-  trainer_type?: string;
-  remaining_group_sessions?: number;
-  remaining_private_sessions?: number;
+  card_type: string | null;
+  card_category: string | null;
+  card_subtype: string | null;
+  trainer_type: string | null;
   valid_until: string | null;
+  remaining_group_sessions: number | null;
+  remaining_private_sessions: number | null;
+  remaining_kids_sessions: number | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 export type CheckIn = Database['public']['Tables']['check_ins']['Row'];
@@ -455,7 +461,7 @@ export interface CheckInFormData {
   name: string;
   email: string;
   timeSlot: string;
-  courseType: 'group' | 'private';
+  courseType: 'group' | 'private' | 'kids_group';
   trainerId?: string;
   is1v2?: boolean;
 }

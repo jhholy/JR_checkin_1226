@@ -5,7 +5,8 @@ const VALID_MEMBERSHIP_TYPES: MembershipType[] = [
   'two_classes',
   'ten_classes',
   'single_monthly',
-  'double_monthly'
+  'double_monthly',
+  'kids_ten_classes'
 ];
 
 export const isValidMembershipType = (type: string | null | undefined): type is MembershipType => {

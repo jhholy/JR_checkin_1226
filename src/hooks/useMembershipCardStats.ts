@@ -106,6 +106,9 @@ export const useMembershipCardStats = () => {
             } else {
                 cardTypeLabel = `私教-${displayCardSubtype || '其他'}`;
             }
+          } else if (displayCardType === '儿童团课') {
+            // 儿童团课卡
+            cardTypeLabel = '儿童团课-10次卡';
           } else {
             // 其他类型卡
             cardTypeLabel = `${displayCardType || '未知'}-${displayCardSubtype || '其他'}`;

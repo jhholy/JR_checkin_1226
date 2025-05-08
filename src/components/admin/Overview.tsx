@@ -297,6 +297,15 @@ export default function Overview({ stats }: Props) {
                       borderWidth: 2,
                     },
                     {
+                      label: '儿童团课签到 Kids Group Class',
+                      data: trends.map(trend => trend.kidsGroupClass || 0),
+                      borderColor: chineseColors.borders[3] || '#34A853', // 绿色
+                      backgroundColor: 'rgba(52, 168, 83, 0.1)',
+                      tension: 0.1,
+                      fill: true,
+                      borderWidth: 2,
+                    },
+                    {
                       label: '私教签到 Private Class',
                       data: trends.map(trend => trend.privateClass || 0),
                       borderColor: chineseColors.borders[0], // 中国红

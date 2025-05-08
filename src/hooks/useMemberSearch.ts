@@ -26,7 +26,7 @@ const memberCache = new QueryCache<{
   totalCount: number;
 }>();
 
-// 添加卡类型映射函数，确保同时支持中英文卡类型
+// 修改卡类型映射函数，添加儿童团课
 const mapCardTypeToDbValues = (cardType: string): string[] => {
   // 定义映射关系
   const typeMap: Record<string, string[]> = {
@@ -35,7 +35,10 @@ const mapCardTypeToDbValues = (cardType: string): string[] => {
     '私教课': ['私教课', 'private', '私教'],
     'private': ['私教课', 'private', '私教'],
     '月卡': ['月卡', 'monthly'],
-    'monthly': ['月卡', 'monthly']
+    'monthly': ['月卡', 'monthly'],
+    '儿童团课': ['儿童团课', 'kids_group', 'kids'],
+    'kids_group': ['儿童团课', 'kids_group', 'kids'],
+    'kids': ['儿童团课', 'kids_group', 'kids']
   };
   
   return typeMap[cardType] || [cardType];
@@ -187,7 +190,8 @@ export function useMemberSearch(defaultPageSize: number = 10) {
                 trainer_type,
                 valid_until,
                 remaining_group_sessions,
-                remaining_private_sessions
+                remaining_private_sessions,
+                remaining_kids_sessions
               )
             `, { count: 'exact' })
             .in('id', membersWithoutCardsIds);
@@ -248,7 +252,8 @@ export function useMemberSearch(defaultPageSize: number = 10) {
             trainer_type,
             valid_until,
             remaining_group_sessions,
-            remaining_private_sessions
+            remaining_private_sessions,
+            remaining_kids_sessions
           )
         `, { count: 'exact' });
 
@@ -323,8 +328,8 @@ export function useMemberSearch(defaultPageSize: number = 10) {
           let expiryQuery = supabase.from('membership_cards').select('member_id');
           
           if (expiryStatus === 'low_classes') {
-            // 课时不足：任何卡的团课剩余次数<=2
-            expiryQuery = expiryQuery.lte('remaining_group_sessions', 2);
+            // 课时不足：任何卡的团课或儿童团课剩余次数<=2
+            expiryQuery = expiryQuery.or('remaining_group_sessions.lte.2,remaining_kids_sessions.lte.2');
           } else if (expiryStatus === 'expired') {
             // 已过期：有效期早于今天
             expiryQuery = expiryQuery.lte('valid_until', today);
@@ -377,6 +382,48 @@ export function useMemberSearch(defaultPageSize: number = 10) {
         .range(start, end);
 
       if (fetchError) throw fetchError;
+
+      // 在返回结果前进行二次过滤
+      if (expiryStatus === 'active') {
+        // 过滤掉不符合"正常"条件的会员
+        const filteredMembers = data.filter(member => {
+          // 检查会员是否有至少一张完全正常的卡
+          return member.membership_cards.some(card => {
+            // 检查有效期
+            const validUntil = card.valid_until ? new Date(card.valid_until) : null;
+            const now = new Date();
+            const sevenDaysLater = new Date(now);
+            sevenDaysLater.setDate(now.getDate() + 7);
+            const hasValidExpiry = !validUntil || validUntil > sevenDaysLater;
+            
+            // 检查剩余课时
+            const hasEnoughSessions = 
+              (card.remaining_group_sessions === null || card.remaining_group_sessions > 2) &&
+              (card.remaining_kids_sessions === null || card.remaining_kids_sessions > 2);
+              
+            return hasValidExpiry && hasEnoughSessions;
+          });
+        });
+        
+        // 更新结果
+        const totalCount = filteredMembers.length;
+        const totalPages = Math.ceil(totalCount / pageSize);
+        const paginatedMembers = filteredMembers.slice(start, end + 1);
+        
+        setResult({
+          members: paginatedMembers,
+          totalCount,
+          currentPage: page,
+          totalPages
+        });
+        
+        return {
+          members: paginatedMembers,
+          totalCount,
+          currentPage: page,
+          totalPages
+        };
+      }
 
       // 更新结果
       const totalCount = count || 0;

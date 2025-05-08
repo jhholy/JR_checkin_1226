@@ -12,13 +12,13 @@ interface ValidateCardResult {
  * 验证会员卡
  * @param cardId 会员卡ID
  * @param memberId 会员ID
- * @param courseType 课程类型 ('private' | 'group')
+ * @param courseType 课程类型 ('private' | 'group' | 'kids_group')
  * @returns 验证结果
  */
 export async function validateMembershipCard(
   cardId: string,
   memberId: string,
-  courseType: 'private' | 'group'
+  courseType: 'private' | 'group' | 'kids_group'
 ): Promise<ValidateCardResult> {
   try {
     logger.info('开始验证会员卡', {

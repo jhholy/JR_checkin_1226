@@ -13,19 +13,20 @@ type Member = Database['public']['Tables']['members']['Row'];
 type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
 type MemberWithCards = Member & { membership_cards: MembershipCard[] };
 type CardType = Database['public']['Enums']['CardType'];
-type ExtendedCardType = CardType | 'no_card' | '团课' | '私教课' | 'all_cards' | '';
+type ExtendedCardType = 
+  | '团课' | '私教课' | '儿童团课'  // 中文卡类型
+  | 'no_card' // 其他筛选选项
+  | 'private' | 'class'; // 添加额外的映射类型
 type CardSubtype = Database['public']['Enums']['CardSubtype'];
 
 // 卡类型和子类型的映射关系 - 保留原有逻辑，但使用中文名称
 const cardTypeToSubtypes: Record<ExtendedCardType, string[]> = {
-  'monthly': ['单次月卡', '双次月卡'],
   'class': ['单次卡', '两次卡', '10次卡'],
   'private': ['单次卡', '10次卡'],
   '团课': ['单次卡', '两次卡', '10次卡', '单次月卡', '双次月卡'],
   '私教课': ['单次卡', '10次卡'],
-  'no_card': [],
-  'all_cards': [],
-  '': []
+  '儿童团课': ['10次卡'],
+  'no_card': []
 };
 
 // 修改后的卡子类型的显示名称
@@ -85,17 +86,17 @@ export default function MemberList() {
     updateMember
   } = useMemberSearch(PAGE_SIZE);
 
-  const handleSearch = (page: number = 1) => {
+  const handleSearch = (page: number = 1, forceRefresh: boolean = false) => {
     // 直接使用选择的卡类型和卡子类型进行搜索
     // 数据库中存储的就是中文值
     searchMembers({
       searchTerm,
-      cardType: cardTypeFilter as CardType | 'no_card' | '团课' | '私教课' | 'all_cards' | '',
+      cardType: cardTypeFilter as CardType | 'no_card' | '团课' | '私教课' | '儿童团课',
       cardSubtype: cardSubtypeFilter,
       expiryStatus: expiryFilter,
       page,
       pageSize: PAGE_SIZE
-    });
+    }, forceRefresh);
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -145,13 +146,11 @@ export default function MemberList() {
   // 添加刷新会员列表的方法
   const refreshMemberList = () => {
     console.log('执行刷新会员列表...');
-    // 清除搜索条件，确保获取最新数据
-    setSearchTerm('');
-    setCardTypeFilter('');
-    setCardSubtypeFilter('');
-    setExpiryFilter('');
-    // 重新搜索
-    handleSearch(currentPage);
+    
+    // 保留当前的筛选条件
+    setTimeout(() => {
+      handleSearch(currentPage, true); // 使用强制刷新
+    }, 0);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -209,7 +208,7 @@ export default function MemberList() {
               <option value="no_card">无会员卡 No Card</option>
               <option value="团课">团课 Group Class</option>
               <option value="私教课">私教课 Private Class</option>
-              <option value="all_cards">全部卡类型 All Card Types</option>
+              <option value="儿童团课">儿童团课 Kids Class</option>
             </select>
           </div>
 
@@ -276,7 +275,7 @@ export default function MemberList() {
       {/* 会员编辑模态框 */}
       {isEditModalOpen && selectedMember && (
         <EditMemberModal
-          member={selectedMember}
+          member={selectedMember as any}
           onClose={() => setIsEditModalOpen(false)}
           onUpdate={handleUpdate}
           refreshMemberList={refreshMemberList}

@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { format, subDays } from 'date-fns';
 
-interface CheckInTrend {
+export interface CheckInTrend {
   date: string;
-  total: number;
-  regular: number;
-  extra: number;
-  groupClass: number;  // 团课签到数
-  privateClass: number; // 私教签到数
+  totalCheckIns: number;
+  groupClass: number;
+  privateClass: number;
+  kidsGroupClass: number;  // 新增儿童团课统计
+  extraCheckIns: number;
 }
 
 export const useCheckInTrends = () => {
@@ -43,12 +43,11 @@ export const useCheckInTrends = () => {
 
           trendData.push({
             date: dateStr,
-            total: dayCheckins.length,
-            regular: dayCheckins.filter(check => !check.is_extra).length,
-            extra: dayCheckins.filter(check => check.is_extra).length,
-            // 按课程类型分类 - 使用is_private字段判断
-            privateClass: dayCheckins.filter(check => check.is_private).length,
+            totalCheckIns: dayCheckins.length,
             groupClass: dayCheckins.filter(check => !check.is_private).length,
+            privateClass: dayCheckins.filter(check => check.is_private).length,
+            kidsGroupClass: dayCheckins.filter(check => check.is_kids_group).length,
+            extraCheckIns: dayCheckins.filter(check => check.is_extra).length,
           });
         }
 

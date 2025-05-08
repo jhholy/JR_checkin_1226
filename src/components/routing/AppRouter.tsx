@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import Home from '../../pages/Home';
 import GroupClassCheckIn from '../../pages/GroupClassCheckIn';
 import PrivateClassCheckIn from '../../pages/PrivateClassCheckIn';
+import KidsGroupClassCheckIn from '../../pages/KidsGroupClassCheckIn';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminLogin from '../AdminLogin';
 import Layout from '../layout/Layout';
@@ -33,6 +34,9 @@ const AppRouter: React.FC = () => {
 
           {/* 团课签到 */}
           <Route path="/group-class" element={<GroupClassCheckIn />} />
+
+          {/* 儿童团课签到 */}
+          <Route path="/kids-group-class" element={<KidsGroupClassCheckIn />} />
 
           {/* 私教课签到 */}
           <Route path="/private-class" element={<PrivateClassCheckIn />} />

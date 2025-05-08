@@ -15,7 +15,8 @@ export default function CheckInRecordsList() {
     endDate: '',
     isExtra: undefined as boolean | undefined,
     isPrivate: undefined as boolean | undefined,
-    trainerId: ''
+    trainerId: '',
+    classTypeFilter: ''
   });
 
   const {
@@ -42,20 +43,32 @@ export default function CheckInRecordsList() {
       isExtra: filters.isExtra,
       isPrivate: filters.isPrivate,
       trainerId: filters.trainerId,
+      classTypeFilter: filters.classTypeFilter,
       page,
       pageSize: 10
     });
     
-    await fetchRecords({
+    let searchParams: any = {
       memberName: filters.memberName,
       startDate: filters.startDate || undefined,
       endDate: filters.endDate || undefined,
       isExtra: filters.isExtra,
-      isPrivate: filters.isPrivate,
       trainerId: filters.trainerId || undefined,
       page,
       pageSize: 10
-    });
+    };
+    
+    if (filters.classTypeFilter === 'private') {
+      searchParams.isPrivate = true;
+    } else if (filters.classTypeFilter === 'group') {
+      searchParams.isPrivate = false;
+      searchParams.classTypes = ['morning', 'evening'];
+    } else if (filters.classTypeFilter === 'kids_group') {
+      searchParams.isPrivate = false;
+      searchParams.classTypes = ['kids group'];
+    }
+    
+    await fetchRecords(searchParams);
   };
 
   const handleFilter = () => {
@@ -73,9 +86,32 @@ export default function CheckInRecordsList() {
       endDate: '',
       isExtra: undefined,
       isPrivate: undefined,
-      trainerId: ''
+      trainerId: '',
+      classTypeFilter: ''
     });
     handleSearch(1);
+  };
+
+  // 辅助函数：判断是否为儿童团课
+  const isKidsGroupClass = (classType: any): boolean => {
+    if (!classType) return false;
+    
+    console.log("检查儿童团课类型:", classType, "类型:", typeof classType);
+    
+    // 对于枚举类型，我们需要精确匹配
+    if (typeof classType === 'string') {
+      const typeStr = classType.toLowerCase();
+      return typeStr === 'kids group' || typeStr.includes('kids') || typeStr.includes('儿童');
+    }
+    
+    // 对于可能的其他类型（如对象），尝试转换为字符串
+    try {
+      const typeStr = String(classType).toLowerCase();
+      return typeStr === 'kids group' || typeStr.includes('kids') || typeStr.includes('儿童');
+    } catch (e) {
+      console.error("无法将class_type转换为字符串:", e);
+      return false;
+    }
   };
 
   const getStatsSummary = () => {
@@ -88,11 +124,14 @@ export default function CheckInRecordsList() {
     
     const totalPrivateClasses = stats.oneOnOne + stats.oneOnTwo;
     const totalCheckins = stats.regular + stats.extra;
-    const totalGroupClasses = totalCheckins - totalPrivateClasses;
+    
+    // 使用后端返回的统计数据
+    const kidsGroupCount = stats.kidsGroup;
+    const normalGroupCount = stats.normalGroup;
     
     return (
       <div className="bg-white p-6 rounded-lg shadow mb-4">
-        <p className="text-gray-600 flex items-center space-x-1 text-lg">
+        <p className="text-gray-600 flex items-center space-x-1 text-lg flex-wrap">
           <span className="font-medium text-[#4285F4]">{memberName}</span>
           <span>于</span>
           <span className="font-medium text-[#4285F4]">{dateRange}</span>
@@ -105,8 +144,10 @@ export default function CheckInRecordsList() {
           <span>次额外签到；</span>
           <span className="font-medium text-purple-600">{totalPrivateClasses}</span>
           <span>次私教课，</span>
-          <span className="font-medium text-blue-600">{totalGroupClasses}</span>
-          <span>次团课。</span>
+          <span className="font-medium text-blue-600">{normalGroupCount}</span>
+          <span>次团课，</span>
+          <span className="font-medium text-pink-600">{kidsGroupCount}</span>
+          <span>次儿童团课。</span>
         </p>
       </div>
     );
@@ -177,19 +218,17 @@ export default function CheckInRecordsList() {
               课程性质 Class Nature
             </label>
             <select
-              value={filters.isPrivate === undefined ? '' : filters.isPrivate.toString()}
+              value={filters.classTypeFilter}
               onChange={(e) => {
                 const value = e.target.value;
-                setFilters(prev => ({
-                  ...prev,
-                  isPrivate: value === '' ? undefined : value === 'true'
-                }));
+                setFilters(prev => ({ ...prev, classTypeFilter: value }));
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#4285F4] focus:border-[#4285F4]"
             >
               <option value="">全部 All</option>
-              <option value="false">团课 Group</option>
-              <option value="true">私教课 Private</option>
+              <option value="private">私教课 Private</option>
+              <option value="group">团课 Group</option>
+              <option value="kids_group">儿童团课 Kids Group</option>
             </select>
           </div>
 
@@ -270,7 +309,9 @@ export default function CheckInRecordsList() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {records.map((record) => (
+                  {records.map((record) => {
+                    console.log("记录的class_type值:", record.class_type, "类型:", typeof record.class_type);
+                    return (
                     <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {record.members && record.members[0]?.name ? record.members[0].name : '未知会员'}
@@ -286,10 +327,16 @@ export default function CheckInRecordsList() {
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             record.is_private
                               ? 'bg-purple-100 text-purple-800'
-                              : 'bg-blue-100 text-blue-800'
+                              : isKidsGroupClass(record.class_type)
+                                ? 'bg-pink-100 text-pink-800'
+                                : 'bg-blue-100 text-blue-800'
                           }`}
                         >
-                          {record.is_private ? '私教课' : '团课'}
+                          {record.is_private 
+                            ? '私教课' 
+                            : isKidsGroupClass(record.class_type)
+                              ? '儿童团课' 
+                              : '团课'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -321,7 +368,7 @@ export default function CheckInRecordsList() {
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

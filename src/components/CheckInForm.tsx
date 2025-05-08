@@ -8,7 +8,7 @@ import { CheckInResult } from '../types/checkIn';
 
 interface Props {
   onSubmit: (data: CheckInFormData) => Promise<CheckInResult>;
-  courseType: 'group' | 'private';
+  courseType: 'group' | 'private' | 'kids_group';
   isNewMember?: boolean;
   requireEmail?: boolean;
   useCachedInfo?: boolean;
@@ -18,7 +18,7 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
   const [formData, setFormData] = useState<CheckInFormData>(() => ({
     name: '',
     email: '',
-    timeSlot: '',
+    timeSlot: courseType === 'kids_group' ? '10:30-12:00' : '',
     courseType,
     trainerId: '',
     is1v2: false
@@ -39,7 +39,12 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
         }
       }
     }
-  }, [useCachedInfo]);
+    
+    // 确保儿童团课的时间段始终为10:30-12:00
+    if (courseType === 'kids_group') {
+      setFormData(prev => ({ ...prev, timeSlot: '10:30-12:00' }));
+    }
+  }, [useCachedInfo, courseType]);
 
   function getCurrentTimeSlot(): string {
     const hour = new Date().getHours();
@@ -53,6 +58,11 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
   }
 
   const handleFieldChange = (field: string, value: string | boolean) => {
+    // 如果是儿童团课且尝试更改timeSlot，则忽略更改
+    if (courseType === 'kids_group' && field === 'timeSlot') {
+      return;
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
     if (needsEmailVerification) {
@@ -62,80 +72,58 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    const validation = validateCheckInForm(formData.name, formData.email);
-    if (!validation.isValid) {
-      console.error('表单基本验证失败:', validation.error);
-      setError(validation.error || '验证失败。Validation failed.');
-      return;
-    }
-
-    if (!formData.timeSlot) {
-      console.error('时间段未选择');
-      setError('请选择时间段。Please select a time slot.');
-      return;
-    }
-
-    if (courseType === 'private') {
-      if (!formData.trainerId) {
-        console.error('私教课程未选择教练');
-        setError('请选择教练。Please select a trainer.');
-        return;
+    // 标准化课程类型确保匹配数据库枚举值
+    const standardizedCourseType = courseType === 'kids_group' 
+      ? 'kids_group' // 确保使用枚举中存在的值
+      : courseType === 'group' 
+        ? (new Date().getHours() < 12 ? 'morning' : 'evening') 
+        : courseType;
+    
+    // 确保儿童团课在提交时使用正确的时间段和类型
+    const finalFormData = {
+      ...formData,
+      courseType: standardizedCourseType,
+      timeSlot: courseType === 'kids_group' ? '10:30-12:00' : formData.timeSlot
+    };
+    
+    try {
+      const result = await onSubmit(finalFormData);
+      console.log('签到结果:', result);
+      
+      if (!result) {
+        throw new Error('签到返回结果为空');
       }
       
-      const timeSlotPattern = /^\d{2}:\d{2}-\d{2}:\d{2}$/;
-      if (!timeSlotPattern.test(formData.timeSlot)) {
-        console.error('时间段格式无效:', formData.timeSlot);
-        setError('时间段格式无效。Invalid time slot format.');
-        return;
-      }
-    }
-
-    setError('');
-    setLoading(true);
-
-    try {
-      const submitData = {
-        ...formData,
-        courseType,
-        trainerId: courseType === 'private' ? formData.trainerId : null,
-        is1v2: courseType === 'private' ? formData.is1v2 : false
-      };
-
-      console.log('提交签到表单:', {
-        ...submitData,
-        isNewMember
-      });
-
-      const result = await onSubmit(submitData);
-
-      console.log('签到结果:', result);
-
-      if (result.isDuplicate) {
-        setError(result.message || '今天已经签到过了。Already checked in today.');
+      if (result.success) {
+        try {
+          localStorage.setItem('lastCheckinUser', JSON.stringify({
+            name: formData.name,
+            email: formData.email
+          }));
+        } catch (e) {
+          console.error('保存用户信息失败:', e);
+        }
+        
+        if (result.isDuplicate) {
+          setError(result.message || '今天已经在此时段签到过，此次为重复签到。');
+        } else {
+          setError('');
+        }
       } else if (result.needsEmailVerification) {
         setNeedsEmailVerification(true);
         setError('');
-      } else if (!result.success) {
+      } else {
         setError(result.message || '签到失败。Check-in failed.');
       }
-    } catch (err) {
-      console.error('表单提交错误:', {
-        error: err,
-        formData: {
-          ...formData,
-          courseType
-        }
+    } catch (error) {
+      console.error('表单提交错误:', { 
+        error, 
+        errorMessage: error instanceof Error ? error.message : '未知错误',
+        formData: finalFormData 
       });
-
-      let errorMessage = '签到失败，请重试。Check-in failed, please try again.';
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (typeof err === 'object' && err !== null) {
-        errorMessage = (err as any).message || errorMessage;
-      }
-
-      setError(errorMessage);
+      setError(error instanceof Error ? error.message : '签到失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -144,11 +132,20 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
   const handleEmailVerification = async (email: string) => {
     setFormData(prev => ({ ...prev, email }));
     try {
+      // 标准化课程类型
+      const standardizedCourseType = courseType === 'kids_group' 
+        ? 'kids_group'
+        : courseType === 'group' 
+          ? (new Date().getHours() < 12 ? 'morning' : 'evening')
+          : courseType;
+        
+      // 确保使用标准化的课程类型
       const result = await onSubmit({
         ...formData,
         email,
-        courseType,
-        trainerId: courseType === 'private' ? formData.trainerId : null,
+        courseType: standardizedCourseType,
+        timeSlot: courseType === 'kids_group' ? '10:30-12:00' : formData.timeSlot,
+        trainerId: courseType === 'private' ? formData.trainerId : '',
         is1v2: courseType === 'private' ? formData.is1v2 : false
       });
 
@@ -188,7 +185,8 @@ export default function CheckInForm({ onSubmit, courseType, isNewMember = false,
         loading={loading}
         isNewMember={isNewMember}
         onChange={handleFieldChange}
-        showTimeSlot={courseType === 'group'}
+        showTimeSlot={courseType === 'group' || courseType === 'kids_group'}
+        courseType={courseType}
       />
 
       {courseType === 'private' && (

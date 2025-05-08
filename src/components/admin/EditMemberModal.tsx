@@ -1,56 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Database } from '../../types/database';
+import { Database, MembershipCard } from '../../types/database';
 import CardForm from './CardForm';
 import { XCircle, CheckCircle } from 'lucide-react';
 import { formatCardInfo } from '../../utils/membership/formatters';
 
 // 卡类型映射
-const getCardTypeDisplay = (type: string | null): string => {
-  if (!type) return '未知';
-  if (type === 'class') return '团课';
-  if (type === 'private') return '私教课';
-  return type; // 返回原值，以防已经是中文
-};
+// const getCardTypeDisplay = (type: string | null): string => {
+//   if (!type) return '未知';
+//   if (type === 'class') return '团课';
+//   if (type === 'private') return '私教课';
+//   if (type === 'kids_group') return '儿童团课';
+//   return type; // 返回原值，以防已经是中文
+// };
 
 // 卡类别映射
-const getCardCategoryDisplay = (category: string | null): string => {
-  if (!category) return '';
-  if (category === 'group') return '课时卡';
-  if (category === 'private') return '私教';
-  if (category === 'monthly') return '月卡';
-  return category; // 返回原值，以防已经是中文
-};
+// const getCardCategoryDisplay = (category: string | null): string => {
+//   if (!category) return '';
+//   if (category === 'group') return '课时卡';
+//   if (category === 'private') return '私教';
+//   if (category === 'monthly') return '月卡';
+//   return category; // 返回原值，以防已经是中文
+// };
 
 // 卡子类型映射
-const getCardSubtypeDisplay = (subtype: string | null): string => {
-  if (!subtype) return '';
-  
-  // 团课卡子类型
-  if (subtype === 'ten_classes' || subtype === 'group_ten_class') return '10次卡';
-  if (subtype === 'single_class') return '单次卡';
-  if (subtype === 'two_classes') return '两次卡';
-  
-  // 私教卡子类型
-  if (subtype === 'ten_private') return '10次私教';
-  if (subtype === 'single_private') return '单次私教';
-  
-  // 月卡子类型
-  if (subtype === 'single_monthly') return '单次月卡';
-  if (subtype === 'double_monthly') return '双次月卡';
-  
-  return subtype; // 返回原值，以防已经是中文
-};
+// const getCardSubtypeDisplay = (subtype: string | null): string => {
+//   if (!subtype) return '';
+//   
+//   // 团课卡子类型
+//   if (subtype === 'ten_classes' || subtype === 'group_ten_class') return '10次卡';
+//   if (subtype === 'single_class') return '单次卡';
+//   if (subtype === 'two_classes') return '两次卡';
+//   
+//   // 私教卡子类型
+//   if (subtype === 'ten_private') return '10次私教';
+//   if (subtype === 'single_private') return '单次私教';
+//   
+//   // 月卡子类型
+//   if (subtype === 'single_monthly') return '单次月卡';
+//   if (subtype === 'double_monthly') return '双次月卡';
+//   
+//   return subtype; // 返回原值，以防已经是中文
+// };
 
 // 教练类型映射
-const getTrainerTypeDisplay = (type: string | null): string => {
-  if (!type) return '';
-  if (type === 'jr') return 'JR教练';
-  if (type === 'senior') return '高级教练';
-  return type;
-};
+// const getTrainerTypeDisplay = (type: string | null): string => {
+//   if (!type) return '';
+//   if (type === 'jr') return 'JR教练';
+//   if (type === 'senior') return '高级教练';
+//   return type;
+// };
 type Member = Database['public']['Tables']['members']['Row'];
-type MembershipCard = Database['public']['Tables']['membership_cards']['Row'];
 
 interface EditMemberModalProps {
   member: Member & { membership_cards: MembershipCard[] };
@@ -190,11 +190,45 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
         } else if (card.card_subtype?.toLowerCase().includes('ten') || card.card_subtype?.toLowerCase().includes('10')) {
           standardizedCard.card_subtype = '10次卡';
         }
+      } else if (card.card_type === '儿童团课' || card.card_type?.toLowerCase() === 'kids_group') {
+        standardizedCard.card_type = '儿童团课';
+        standardizedCard.card_category = '课时卡';
+        standardizedCard.card_subtype = '10次卡';
+        
+        // 确保remaining_kids_sessions被正确处理
+        // 如果表单中提供了值，使用表单值；否则保留原值
+        if (card.remaining_kids_sessions !== undefined) {
+          standardizedCard.remaining_kids_sessions = card.remaining_kids_sessions;
+        }
+        
+        // 重要：确保其他session字段不会干扰儿童课程
+        standardizedCard.remaining_group_sessions = null;
+        standardizedCard.remaining_private_sessions = null;
       }
       
-      console.log('保存标准化后的会员卡:', standardizedCard);
+      console.log('准备保存儿童团课卡数据:', {
+        card_type: standardizedCard.card_type,
+        remaining_kids_sessions: standardizedCard.remaining_kids_sessions,
+        完整数据: standardizedCard
+      });
+
+      // 在调用supabase前记录完整数据
+      console.log('发送到数据库的完整数据:', standardizedCard);
 
       if (editingCardId) {
+        // 获取原卡信息
+        const originalCard = cards.find(c => c.id === editingCardId);
+        
+        // 如果是从课时卡改为月卡，重置剩余课时
+        if (originalCard && 
+            (originalCard.card_category === '课时卡' || originalCard.card_category === 'session') &&
+            (standardizedCard.card_category === '月卡' || standardizedCard.card_category === 'monthly')) {
+          
+          console.log('检测到卡类型从课时卡变更为月卡，重置剩余课时');
+          // 月卡不需要记录剩余课时，设为null
+          standardizedCard.remaining_group_sessions = null;
+        }
+        
         // 更新现有卡
         console.log('准备更新会员卡，卡ID:', editingCardId);
         console.log('更新会员卡的完整数据:', standardizedCard);
@@ -212,6 +246,42 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
           throw error;
         }
         console.log('更新会员卡成功:', editingCardId);
+        
+        // 在此处添加立即刷新卡片数据的代码
+        // 重新获取会员卡列表，确保页面显示最新信息
+        const { data: updatedCards, error: fetchError } = await supabase
+          .from('membership_cards')
+          .select(`
+            id,
+            card_type,
+            card_category,
+            card_subtype,
+            trainer_type,
+            remaining_group_sessions,
+            remaining_private_sessions,
+            remaining_kids_sessions,
+            valid_until,
+            created_at,
+            member_id
+          `)
+          .eq('member_id', member.id);
+
+        if (fetchError) {
+          console.error('获取更新后的会员卡数据失败:', fetchError);
+        } else {
+          // 更新本地cards状态
+          setCards((updatedCards || []).map(card => ({
+            ...card,
+            updated_at: null // 添加缺失的字段以满足类型要求
+          })) as MembershipCard[]);
+          
+          // 更新member对象中的membership_cards
+          member.membership_cards = (updatedCards || []).map(card => ({
+            ...card,
+            updated_at: null
+          })) as MembershipCard[];
+        }
+        
         showSuccessMessage('更新会员卡成功');
       } else {
         // 添加新卡
@@ -280,6 +350,7 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
             trainer_type,
             remaining_group_sessions,
             remaining_private_sessions,
+            remaining_kids_sessions,
             valid_until,
             created_at,
             member_id
@@ -305,7 +376,9 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
         setEditingCardId(null);
         
         // 确保刷新会员列表
-        refreshMemberList();
+        setTimeout(() => {
+          refreshMemberList();
+        }, 0);
       }
     } catch (error) {
       console.error('保存会员卡失败:', error);
@@ -368,7 +441,9 @@ export default function EditMemberModal({ member, onClose, onUpdate, refreshMemb
       member.membership_cards = updatedCards;
       
       showSuccessMessage('删除会员卡成功');
-      refreshMemberList();
+      setTimeout(() => {
+        refreshMemberList();
+      }, 0);
     } catch (error) {
       console.error('删除会员卡失败:', error);
       setError('删除会员卡失败，请重试');

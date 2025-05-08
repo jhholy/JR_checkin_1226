@@ -107,10 +107,14 @@ export default function MemberTable({
                   {member.membership_cards && member.membership_cards.length > 0 ? (
                     (() => {
                       const now = new Date();
+                      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 今天0点
                       // 检查是否有过期的卡
                       const hasExpiredCard = member.membership_cards.some(card => {
                         const validUntil = card.valid_until ? new Date(card.valid_until) : null;
-                        return validUntil && validUntil < now;
+                        const validUntilDate = validUntil ? new Date(validUntil) : null;
+                        const validUntilDay = validUntilDate ? new Date(validUntilDate.getFullYear(), validUntilDate.getMonth(), validUntilDate.getDate()) : null;
+                        const isExpired = validUntilDay && validUntilDay < today;
+                        return isExpired;
                       });
 
                       // 如果有过期卡，显示"已过期"
@@ -127,8 +131,18 @@ export default function MemberTable({
                       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
                       
                       const hasUpcomingExpiryCard = member.membership_cards.some(card => {
-                        const validUntil = card.valid_until ? new Date(card.valid_until) : null;
-                        return validUntil && validUntil >= now && validUntil <= sevenDaysFromNow;
+                        if (!card.valid_until) return false;
+                        
+                        const now = new Date();
+                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        const validUntilDate = new Date(card.valid_until);
+                        const validUntilDay = new Date(validUntilDate.getFullYear(), validUntilDate.getMonth(), validUntilDate.getDate());
+                        
+                        // 剩余天数计算
+                        const daysLeft = Math.ceil((validUntilDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        
+                        // 严格检查是否在0-7天范围内（包括当天）
+                        return daysLeft >= 0 && daysLeft <= 7;
                       });
 
                       // 如果有即将过期的卡，显示"即将到期"
@@ -141,10 +155,20 @@ export default function MemberTable({
                       }
                       
                       // 检查是否有课时不足的卡（剩余课时<=2）
-                      const hasLowClassesCard = member.membership_cards.some(card => 
-                        // 简化逻辑：只要剩余团课次数是有效数字且<=2即可
-                        typeof card.remaining_group_sessions === 'number' && card.remaining_group_sessions <= 2
-                      );
+                      const hasLowClassesCard = member.membership_cards.some(card => {
+                        // 月卡不考虑剩余课时
+                        const isMonthlyCard = 
+                          card.card_category === '月卡' || 
+                          card.card_category === 'monthly';
+                          
+                        if (isMonthlyCard) {
+                          return false; // 月卡不基于课时判断是否不足
+                        }
+                        
+                        // 其他卡类型正常判断剩余课时
+                        return typeof card.remaining_group_sessions === 'number' && 
+                               card.remaining_group_sessions <= 2;
+                      });
                       
                       // 如果有课时不足的卡，显示"课时不足"
                       if (hasLowClassesCard) {

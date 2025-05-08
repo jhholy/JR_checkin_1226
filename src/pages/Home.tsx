@@ -35,6 +35,17 @@ export default function Home() {
               <div className="text-sm opacity-90">私人教练课程签到入口 Private training check-in entrance</div>
             </div>
           </Link>
+
+          {/* 儿童团课签到入口 */}
+          <Link
+            to="/kids-group-class"
+            className="block w-full"
+          >
+            <div className="bg-[#34A853] text-white rounded-lg p-4 hover:bg-green-600 transition-colors">
+              <div className="text-lg font-medium">儿童团课签到 Kids Group Class Check-in</div>
+              <div className="text-sm opacity-90">儿童团体课程签到入口 Kids group class check-in entrance</div>
+            </div>
+          </Link>
         </div>
 
         {/* 会员登录入口 - 新增 */}
