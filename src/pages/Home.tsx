@@ -20,8 +20,10 @@ export default function Home() {
             className="block w-full"
           >
             <div className="bg-[#4285F4] text-white rounded-lg p-4 hover:bg-blue-600 transition-colors">
-              <div className="text-lg font-medium">团课签到 Group Class Check-in</div>
-              <div className="text-sm opacity-90">团体课程签到入口 Group class check-in entrance</div>
+              <div className="flex flex-col items-center space-y-1">
+                <span className="text-lg font-medium">团课签到</span>
+                <span className="text-lg font-medium">Group Class Check-in</span>
+              </div>
             </div>
           </Link>
 
@@ -31,8 +33,10 @@ export default function Home() {
             className="block w-full"
           >
             <div className="bg-[#EA4335] text-white rounded-lg p-4 hover:bg-red-600 transition-colors">
-              <div className="text-lg font-medium">私教签到 Private Class Check-in</div>
-              <div className="text-sm opacity-90">私人教练课程签到入口 Private training check-in entrance</div>
+              <div className="flex flex-col items-center space-y-1">
+                <span className="text-lg font-medium">私教签到</span>
+                <span className="text-lg font-medium">Private Class Check-in</span>
+              </div>
             </div>
           </Link>
 
@@ -42,8 +46,10 @@ export default function Home() {
             className="block w-full"
           >
             <div className="bg-[#34A853] text-white rounded-lg p-4 hover:bg-green-600 transition-colors">
-              <div className="text-lg font-medium">儿童团课签到 Kids Group Class Check-in</div>
-              <div className="text-sm opacity-90">儿童团体课程签到入口 Kids group class check-in entrance</div>
+              <div className="flex flex-col items-center space-y-1">
+                <span className="text-lg font-medium">儿童团课签到</span>
+                <span className="text-lg font-medium">Kids Group Class Check-in</span>
+              </div>
             </div>
           </Link>
         </div>
