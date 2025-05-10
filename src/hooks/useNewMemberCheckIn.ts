@@ -58,13 +58,19 @@ export function useNewMemberCheckIn() {
       const timeSlot = formatTimeSlot(formData.timeSlot);
       const isPrivate = formData.courseType === 'private';
       
+      // 确定class_type参数
+      const classType = formData.courseType === 'kids_group' ? 'kids group' : // 儿童团课
+                       formData.courseType === 'private' ? 'private' :      // 私教课
+                       timeSlot.includes('9:00') || timeSlot.includes('09:00') || timeSlot.includes('10:30') ? 'morning' : 'evening';
+      
       // 调用后端函数注册新会员
       const { data, error } = await supabase.rpc('register_new_member', {
         p_name: formData.name.trim(),
         p_email: formData.email.trim(),
-        p_time_slot: timeSlot,
+        p_class_type: classType,
         p_is_private: isPrivate,
         p_trainer_id: isPrivate ? formData.trainerId : null,
+        p_time_slot: timeSlot,
         p_is_1v2: isPrivate ? formData.is1v2 : false
       });
 

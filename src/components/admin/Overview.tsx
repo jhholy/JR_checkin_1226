@@ -98,7 +98,7 @@ export default function Overview({ stats }: Props) {
   // 获取处理后的会员卡分布数据
   const cardDistributionData = processCardStats();
 
-  // 获取简化的会员卡类型（合并为团课卡和私教卡）
+  // 获取简化的会员卡类型（分为团课卡、儿童团课卡和私教卡）
   const simplifyCardTypes = () => {
     if (!cardStats || cardStats.length === 0) {
       return [{ type: '暂无数据', value: 1, percentage: '100%' }];
@@ -106,12 +106,14 @@ export default function Overview({ stats }: Props) {
 
     const groupTypeMap = new Map<string, number>();
     
-    // 根据卡类型分组，使用与EditMemberModal.tsx一致的映射
+    // 根据卡类型分组，区分团课卡、儿童团课卡和私教卡
     cardStats.forEach(stat => {
       let displayType = '';
       
-      // 使用与EditMemberModal.tsx相同的映射规则
-      if (stat.cardType.includes('私教') || stat.cardType.toLowerCase().includes('private')) {
+      // 分类逻辑：儿童团课卡、私教卡和普通团课卡
+      if (stat.cardType.includes('儿童') || stat.cardType.toLowerCase().includes('kids')) {
+        displayType = '儿童团课卡';
+      } else if (stat.cardType.includes('私教') || stat.cardType.toLowerCase().includes('private')) {
         displayType = '私教卡';
       } else {
         displayType = '团课卡';
@@ -141,11 +143,13 @@ export default function Overview({ stats }: Props) {
   // 根据卡类型获取背景色（确保颜色一致性）
   const getCardTypeColor = (cardType: string, index: number, isBackground: boolean = false) => {
     const defaultColors = isBackground ? 
-      [chineseColors.backgrounds[1], chineseColors.backgrounds[2]] : 
-      [chineseColors.borders[1], chineseColors.borders[2]];
+      [chineseColors.backgrounds[1], chineseColors.backgrounds[2], chineseColors.backgrounds[3]] : 
+      [chineseColors.borders[1], chineseColors.borders[2], chineseColors.borders[3]];
     
     if (cardType.includes('私教')) {
       return isBackground ? chineseColors.backgrounds[2] : chineseColors.borders[2];
+    } else if (cardType.includes('儿童')) {
+      return isBackground ? chineseColors.backgrounds[3] : chineseColors.borders[3];
     } else if (cardType.includes('团课')) {
       return isBackground ? chineseColors.backgrounds[1] : chineseColors.borders[1];
     }

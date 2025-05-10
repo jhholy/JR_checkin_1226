@@ -17,7 +17,8 @@ export const messages = {
     emailRequired: '请输入邮箱\nPlease enter your email',
     invalidName: '姓名格式不正确\nInvalid name format',
     invalidEmail: '邮箱格式不正确\nInvalid email format',
-    emailRequiredNewMember: '新会员注册需要填写邮箱\nEmail is required for new member registration'
+    emailRequiredNewMember: '新会员注册需要填写邮箱\nEmail is required for new member registration',
+    emailExists: '该邮箱已被注册。\nThis email is already registered.'
   },
   memberExists: '会员已存在，请前往会员签到页面。\n\nMember already exists, please go to member check-in page.',
   newMember: '新会员签到成功！请联系管理员办理会员卡。\n\nNew member check-in successful! Please contact admin to purchase membership card.',

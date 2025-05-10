@@ -119,9 +119,12 @@ export function useCheckIn() {
         const registerParams = {
           p_name: formData.name,
           p_email: formData.email || '',  // 确保email不为null
-          p_time_slot: formData.timeSlot,
+          p_class_type: formData.courseType === 'kids_group' ? 'kids group' : // 儿童团课
+                       formData.courseType === 'private' ? 'private' :      // 私教课
+                       getClassTypeFromTimeSlot(formData.timeSlot),         // 普通团课
           p_is_private: formData.courseType === 'private',
           p_trainer_id: formData.courseType === 'private' ? formData.trainerId : null,
+          p_time_slot: formData.timeSlot,
           p_is_1v2: formData.courseType === 'private' ? !!formData.is1v2 : false
         };
         

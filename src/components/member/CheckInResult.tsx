@@ -71,15 +71,6 @@ export default function CheckInResult({ status }: Props) {
           <CheckCircle className={`w-16 h-16 mx-auto mb-4 ${getIconColor()}`} />
           <h2 className="text-xl font-semibold mb-2">{getTitle()}</h2>
           <p className={`mb-6 whitespace-pre-line ${getMessageStyle()}`}>{status.message}</p>
-          {status.isExtra && (
-            <div className="text-sm text-gray-500 mb-4">
-              {status.courseType === 'private' ? (
-                '提示：请联系管理员购买或续费私教卡 / Please contact admin for private card'
-              ) : (
-                '提示：请联系管理员购买或续费会员卡 / Please contact admin for membership card'
-              )}
-            </div>
-          )}
           <p className="text-sm text-gray-500">
             页面将在3秒后自动返回首页...
             <br />

@@ -286,8 +286,8 @@ export type Database = {
         | "double_monthly"
         | "kids_ten_classes";
       
-      ClassType: "morning" | "evening";
-        CardType: "group" | "private" | "kids_group" | "团课" | "私教课" | "儿童团课" | "all_cards";
+      ClassType: "morning" | "evening" | "private" | "kids group";
+        CardType: "class" | "private" | "kids_group" | "团课" | "私教课" | "儿童团课" | "all_cards";
       CardCategory: "group" | "private";
       CardSubtype: 
         | "single_class" 

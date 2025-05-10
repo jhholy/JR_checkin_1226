@@ -108,17 +108,16 @@ export default function MemberTable({
                     (() => {
                       const now = new Date();
                       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 今天0点
-                      // 检查是否有过期的卡
-                      const hasExpiredCard = member.membership_cards.some(card => {
+                      
+                      // 检查是否有有效的卡（未过期）
+                      const hasValidCard = member.membership_cards.some(card => {
                         const validUntil = card.valid_until ? new Date(card.valid_until) : null;
-                        const validUntilDate = validUntil ? new Date(validUntil) : null;
-                        const validUntilDay = validUntilDate ? new Date(validUntilDate.getFullYear(), validUntilDate.getMonth(), validUntilDate.getDate()) : null;
-                        const isExpired = validUntilDay && validUntilDay < today;
-                        return isExpired;
+                        // 如果卡没有有效期限制或有效期在今天及以后，则认为有效
+                        return !validUntil || validUntil >= today;
                       });
 
-                      // 如果有过期卡，显示"已过期"
-                      if (hasExpiredCard) {
+                      // 如果所有卡都过期了（没有有效卡），才显示"已过期"
+                      if (!hasValidCard && member.membership_cards.length > 0) {
                         return (
                           <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                             已过期 Expired
@@ -166,8 +165,26 @@ export default function MemberTable({
                         }
                         
                         // 其他卡类型正常判断剩余课时
-                        return typeof card.remaining_group_sessions === 'number' && 
-                               card.remaining_group_sessions <= 2;
+                        // 如果是团课，检查团课剩余课时
+                        const hasLowGroupSessions = 
+                          (card.card_type === '团课' || card.card_type === 'class' || card.card_type === 'group') && 
+                          typeof card.remaining_group_sessions === 'number' && 
+                          card.remaining_group_sessions <= 2;
+                        
+                        // 如果是私教课，检查私教课剩余课时
+                        const hasLowPrivateSessions = 
+                          (card.card_type === '私教课' || card.card_type === 'private') && 
+                          typeof card.remaining_private_sessions === 'number' && 
+                          card.remaining_private_sessions <= 2;
+                          
+                        // 如果是儿童团课，检查儿童团课剩余课时
+                        const hasLowKidsSessions = 
+                          (card.card_type === '儿童团课' || card.card_type === 'kids_group' || card.card_type === 'kids') && 
+                          typeof card.remaining_kids_sessions === 'number' && 
+                          card.remaining_kids_sessions <= 2;
+                          
+                        // 任何一种课时不足都判定为课时不足
+                        return hasLowGroupSessions || hasLowPrivateSessions || hasLowKidsSessions;
                       });
                       
                       // 如果有课时不足的卡，显示"课时不足"

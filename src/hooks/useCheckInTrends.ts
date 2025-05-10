@@ -44,9 +44,9 @@ export const useCheckInTrends = () => {
           trendData.push({
             date: dateStr,
             totalCheckIns: dayCheckins.length,
-            groupClass: dayCheckins.filter(check => !check.is_private).length,
+            groupClass: dayCheckins.filter(check => !check.is_private && check.class_type !== 'kids group').length,
             privateClass: dayCheckins.filter(check => check.is_private).length,
-            kidsGroupClass: dayCheckins.filter(check => check.is_kids_group).length,
+            kidsGroupClass: dayCheckins.filter(check => check.class_type === 'kids group').length,
             extraCheckIns: dayCheckins.filter(check => check.is_extra).length,
           });
         }

@@ -96,7 +96,7 @@ export default function MemberList() {
       expiryStatus: expiryFilter,
       page,
       pageSize: PAGE_SIZE
-    }, forceRefresh);
+    });
   };
 
   const handleSubmit = (e: FormEvent) => {

@@ -170,8 +170,14 @@ const MemberRecords: React.FC = () => {
     );
   }
 
-  const getClassTypeTranslation = (isPrivate: boolean) => {
-    return isPrivate ? '私教课 Private Class' : '团课 Group Class';
+  const getClassTypeTranslation = (isPrivate: boolean, classType?: string) => {
+    if (isPrivate) {
+      return '私教课 Private Class';
+    } else if (classType === 'kids group') {
+      return '儿童团课 Kids Group Class';
+    } else {
+      return '团课 Group Class';
+    }
   };
 
   const getExtraCheckInText = () => {
@@ -298,9 +304,9 @@ const MemberRecords: React.FC = () => {
                   <ClipboardCheck className={`w-6 h-6 ${record.is_private ? `text-[${MUAYTHAI_BLUE}]` : `text-[${MUAYTHAI_BLUE}]`}`} />
                   <div>
                     <span className="font-medium">
-                      {getClassTypeTranslation(record.is_private)}
+                      {getClassTypeTranslation(record.is_private, record.class_type)}
                     </span>
-                    {record.class_type && record.class_type !== 'private' && (
+                    {record.class_type && record.class_type !== 'private' && record.class_type !== 'kids group' && (
                       <span className="ml-2 text-gray-500">({record.class_type})</span>
                     )}
                     {record.is_extra && (
