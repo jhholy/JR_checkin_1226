@@ -12,6 +12,7 @@ type MemberRecord = {
   会员卡类型: string;
   剩余团课课时: string;
   剩余私教课时: string;
+  剩余儿童团课课时: string;
   会员卡到期日: string;
   注册时间: string;
   最后签到时间: string;
@@ -33,14 +34,40 @@ export default function DataExport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 添加判断儿童团课的辅助函数
+  const isKidsGroupClass = (classType: any): boolean => {
+    if (!classType) return false;
+    
+    // 对于字符串类型，进行精确匹配
+    if (typeof classType === 'string') {
+      const typeStr = classType.toLowerCase();
+      return typeStr === 'kids group' || typeStr.includes('kids') || typeStr.includes('儿童');
+    }
+    
+    // 对于可能的其他类型（如对象），尝试转换为字符串
+    try {
+      const typeStr = String(classType).toLowerCase();
+      return typeStr === 'kids group' || typeStr.includes('kids') || typeStr.includes('儿童');
+    } catch (e) {
+      return false;
+    }
+  };
+
   const getCardTypeText = (card: MembershipCard) => {
     // 标准化卡类型
     const cardType = standardizeCardType(card.card_type ?? null);
     const cardCategory = standardizeCardCategory(card.card_category ?? null);
     const cardSubtype = standardizeCardSubtype(card.card_subtype ?? null);
     
+    // 儿童团课处理
+    if (cardType === '儿童团课') {
+      if (cardSubtype === '10次卡') {
+        return '儿童团课10次卡 Kids Ten Classes';
+      }
+      return '儿童团课卡 Kids Class';
+    }
     // 团课处理
-    if (cardType === '团课') {
+    else if (cardType === '团课') {
       if (cardCategory === '月卡') {
         if (cardSubtype === '单次月卡') {
           return '团课单次月卡 Single Monthly';
@@ -91,7 +118,9 @@ export default function DataExport() {
     
     const lowerType = cardType.toLowerCase();
     
-    if (lowerType === 'class' || lowerType === 'group' || lowerType.includes('团课')) {
+    if (lowerType.includes('kids') || lowerType.includes('儿童')) {
+      return '儿童团课';
+    } else if (lowerType === 'class' || lowerType === 'group' || lowerType.includes('团课')) {
       return '团课';
     } else if (lowerType === 'private' || lowerType.includes('私教')) {
       return '私教课';
@@ -170,6 +199,7 @@ export default function DataExport() {
             card_subtype,
             remaining_group_sessions,
             remaining_private_sessions,
+            remaining_kids_sessions,
             valid_until
           )
         `);
@@ -189,7 +219,7 @@ export default function DataExport() {
         '会员卡类型': member.membership_cards.map(card => getCardTypeText(card)).join(', '),
         '剩余团课课时': member.membership_cards
           .filter(card => {
-            // 使用标准化函数判断团课卡
+            // 只处理普通团课卡
             const cardType = standardizeCardType(card.card_type ?? null);
             return cardType === '团课';
           })
@@ -214,6 +244,14 @@ export default function DataExport() {
             return cardType === '私教课';
           })
           .map(card => card.remaining_private_sessions?.toString() || '0')
+          .join(', '),
+        '剩余儿童团课课时': member.membership_cards
+          .filter(card => {
+            // 只处理儿童团课卡
+            const cardType = standardizeCardType(card.card_type ?? null);
+            return cardType === '儿童团课';
+          })
+          .map(card => card.remaining_kids_sessions?.toString() || '0')
           .join(', '),
         '会员卡到期日': member.membership_cards
           .filter(card => card.valid_until)
@@ -318,11 +356,14 @@ export default function DataExport() {
           courseTypeText = record.is_1v2 ? '1对2' : '1对1';
         }
 
+        // 判断是否为儿童团课
+        const isKidsClass = isKidsGroupClass(record.class_type);
+
         return {
           '会员姓名': memberInfo.name,
           '会员邮箱': memberInfo.email,
-          '上课时段': record.time_slot || (record.class_type === 'morning' ? '早课 9:00-10:30' : '晚课 17:00-18:30'),
-          '课程性质': record.is_private ? '私教课' : '团课',
+          '上课时段': record.time_slot || (isKidsClass ? '儿童团课 10:30-12:00' : record.class_type === 'morning' ? '早课 9:00-10:30' : '晚课 17:00-18:30'),
+          '课程性质': record.is_private ? '私教课' : isKidsClass ? '儿童团课' : '团课',
           '教练': trainerInfo?.name || '-',
           '课程类型': courseTypeText,
           '签到时间': formatDateTimeSafe(record.created_at),
